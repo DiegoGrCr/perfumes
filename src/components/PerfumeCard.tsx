@@ -242,7 +242,10 @@ export default function PerfumeCard({ perfume }: Props) {
                 addItem(perfume, perfume.volume_ml); openDrawer()
               } else {
                 const msg = encodeURIComponent(`¡Hola! Quisiera consultar la disponibilidad de: ${perfume.name} (${perfume.brand}) – ${perfume.volume_ml}ml`)
-                window.open(`https://wa.me/527299427673?text=${msg}`, '_blank')
+                const a = document.createElement('a')
+                a.href = `https://wa.me/527299427673?text=${msg}`
+                a.rel = 'noopener noreferrer'
+                a.click()
               }
             }}
             onMouseEnter={e => { if (perfume.in_stock) e.currentTarget.style.opacity = '0.85' }}

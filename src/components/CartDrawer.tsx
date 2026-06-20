@@ -155,7 +155,12 @@ export default function CartDrawer() {
             </div>
 
             <button
-              onClick={() => window.open(`https://wa.me/${WA}?text=${buildMsg(items)}`, '_blank')}
+              onClick={() => {
+                const a = document.createElement('a')
+                a.href = `https://wa.me/${WA}?text=${buildMsg(items)}`
+                a.rel = 'noopener noreferrer'
+                a.click()
+              }}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded-full text-sm font-medium tracking-widest uppercase"
               style={{ background: '#25D366', color: '#fff' }}
               onMouseEnter={e => { e.currentTarget.style.opacity = '0.88' }}
