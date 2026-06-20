@@ -5,6 +5,19 @@ import { Providers } from '@/components/Providers'
 export const metadata: Metadata = {
   title: 'Essence Parfumerie — Catálogo de Fragancias',
   description: 'Fragancias árabes, de diseñador y de nicho seleccionadas con el más alto estándar. Originales, 100% auténticas.',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Essence Parfumerie',
+  },
+  icons: {
+    icon: '/icons/icon-192.png',
+    apple: '/icons/icon-192.png',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

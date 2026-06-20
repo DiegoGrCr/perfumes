@@ -17,7 +17,7 @@ export default function Header() {
           {/* Logo → inicio */}
           <Link href="/">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/velvet.png" alt="Logo" style={{ height: '48px', width: 'auto', objectFit: 'contain' }} />
+            <img src="/images/logo.png" alt="Logo" style={{ height: '48px', width: 'auto', objectFit: 'contain' }} />
           </Link>
 
           {/* Acciones */}
