@@ -241,8 +241,6 @@ export default function PerfumeCard({ perfume }: Props) {
           ) : (
             <a
               href={`https://wa.me/527299427673?text=${encodeURIComponent(`¡Hola! Quisiera consultar la disponibilidad de: ${perfume.name} (${perfume.brand}) – ${perfume.volume_ml}ml`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
               onClick={e => e.stopPropagation()}
               className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[10px] tracking-widest uppercase font-medium"
               style={{ background: '#F0F0F0', color: '#bbb' }}
