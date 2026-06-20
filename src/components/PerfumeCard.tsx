@@ -228,31 +228,28 @@ export default function PerfumeCard({ perfume }: Props) {
             )}
           </div>
 
-          <button
-            disabled={!perfume.in_stock}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[10px] tracking-widest uppercase font-medium transition-all duration-200"
-            style={{
-              background: perfume.in_stock ? accent : '#F0F0F0',
-              color: perfume.in_stock ? '#fff' : '#bbb',
-              cursor: perfume.in_stock ? 'pointer' : 'not-allowed',
-            }}
-            onClick={e => {
-              e.stopPropagation()
-              if (perfume.in_stock) {
-                addItem(perfume, perfume.volume_ml); openDrawer()
-              } else {
-                const msg = encodeURIComponent(`¡Hola! Quisiera consultar la disponibilidad de: ${perfume.name} (${perfume.brand}) – ${perfume.volume_ml}ml`)
-                const a = document.createElement('a')
-                a.href = `https://wa.me/527299427673?text=${msg}`
-                a.rel = 'noopener noreferrer'
-                a.click()
-              }
-            }}
-            onMouseEnter={e => { if (perfume.in_stock) e.currentTarget.style.opacity = '0.85' }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
-          >
-            {perfume.in_stock ? <><ShoppingBag size={11} />Pedir</> : <><Eye size={11} />Ver</>}
-          </button>
+          {perfume.in_stock ? (
+            <button
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[10px] tracking-widest uppercase font-medium transition-all duration-200"
+              style={{ background: accent, color: '#fff' }}
+              onClick={e => { e.stopPropagation(); addItem(perfume, perfume.volume_ml); openDrawer() }}
+              onMouseEnter={e => { e.currentTarget.style.opacity = '0.85' }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+            >
+              <ShoppingBag size={11} /> Pedir
+            </button>
+          ) : (
+            <a
+              href={`https://wa.me/527299427673?text=${encodeURIComponent(`¡Hola! Quisiera consultar la disponibilidad de: ${perfume.name} (${perfume.brand}) – ${perfume.volume_ml}ml`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[10px] tracking-widest uppercase font-medium"
+              style={{ background: '#F0F0F0', color: '#bbb' }}
+            >
+              <Eye size={11} /> Ver
+            </a>
+          )}
         </div>
       </div>
     </div>
