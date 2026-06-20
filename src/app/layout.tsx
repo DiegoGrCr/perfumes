@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Essence Parfumerie',
+    title: 'Velvet',
   },
   icons: {
     icon: [

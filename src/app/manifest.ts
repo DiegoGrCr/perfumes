@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Essence Parfumerie',
-    short_name: 'Essence',
+    name: 'Velvet',
+    short_name: 'Velvet',
     description: 'Catálogo de fragancias árabes, de diseñador y de nicho',
     start_url: '/',
     display: 'standalone',
