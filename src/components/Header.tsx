@@ -33,7 +33,7 @@ export default function Header() {
               href="https://wa.me/527299427673"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-xs tracking-widest uppercase rounded-full transition-all duration-200"
+              className="flex items-center gap-2 px-3 py-1.5 text-xs tracking-widest uppercase rounded-full transition-all duration-200"
               style={{ color: '#888', border: '1px solid #E5E5E5' }}
               onMouseEnter={e => { e.currentTarget.style.color = '#C9A84C'; e.currentTarget.style.borderColor = '#C9A84C' }}
               onMouseLeave={e => { e.currentTarget.style.color = '#888'; e.currentTarget.style.borderColor = '#E5E5E5' }}
