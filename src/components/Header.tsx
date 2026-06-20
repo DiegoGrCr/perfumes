@@ -15,16 +15,9 @@ export default function Header() {
         <div className="flex items-center justify-between h-18 py-3">
 
           {/* Logo → inicio */}
-          <Link href="/" className="flex flex-col leading-none">
-            <span
-              className="text-2xl font-light tracking-[0.35em] uppercase"
-              style={{ color: '#C9A84C', letterSpacing: '0.3em' }}
-            >
-              Essence
-            </span>
-            <span className="text-[9px] tracking-[0.55em] uppercase ml-0.5" style={{ color: '#C4B48A' }}>
-              Parfumerie
-            </span>
+          <Link href="/">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/velvet.png" alt="Logo" style={{ height: '48px', width: 'auto', objectFit: 'contain' }} />
           </Link>
 
           {/* Acciones */}
