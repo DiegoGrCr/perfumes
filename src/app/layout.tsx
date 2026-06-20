@@ -12,8 +12,14 @@ export const metadata: Metadata = {
     title: 'Essence Parfumerie',
   },
   icons: {
-    icon: '/icons/icon-192.png',
-    apple: '/icons/icon-192.png',
+    icon: [
+      { url: '/icons/icon-16.png',  sizes: '16x16',  type: 'image/png' },
+      { url: '/icons/icon-32.png',  sizes: '32x32',  type: 'image/png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icons/icon-180.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
   other: {
     'mobile-web-app-capable': 'yes',
