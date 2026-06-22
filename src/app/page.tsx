@@ -83,7 +83,7 @@ export default async function Home() {
       {/* Footer */}
       <footer className="text-center py-8" style={{ borderTop: '1px solid #EBEBEB', background: '#fff' }}>
         <p className="text-[10px] tracking-widest uppercase" style={{ color: '#ccc' }}>
-          © 2025 Essence Parfumerie · Fragancias 100% auténticas
+          © 2026 Velvet · Fragancias 100% auténticas
         </p>
       </footer>
     </div>
