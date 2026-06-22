@@ -321,13 +321,66 @@ export function ImageUploader({
     if (e.dataTransfer.files) processFiles(e.dataTransfer.files)
   }
 
+  // Post-procesa el blob: recupera ~2px de borde perdido + suaviza orillas con feathering
+  async function softEdges(inputBlob: Blob): Promise<Blob> {
+    return new Promise(resolve => {
+      const url = URL.createObjectURL(inputBlob)
+      const img = new Image()
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        const { width, height } = img
+        const c = document.createElement('canvas')
+        c.width = width; c.height = height
+        const ctx = c.getContext('2d')!
+        ctx.drawImage(img, 0, 0)
+        const imgData = ctx.getImageData(0, 0, width, height)
+        const px = imgData.data
+
+        // Extraer alpha original como float
+        const orig = new Float32Array(width * height)
+        for (let i = 0; i < orig.length; i++) orig[i] = px[i * 4 + 3] / 255
+
+        const GROW    = 2  // píxeles a recuperar
+        const FEATHER = 4  // píxeles de degradado suave
+        const R = GROW + FEATHER
+        const out = new Float32Array(orig)
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const idx = y * width + x
+            if (orig[idx] > 0.5) continue  // ya es foreground
+            let best = 0
+            for (let dy = -R; dy <= R; dy++) {
+              for (let dx = -R; dx <= R; dx++) {
+                const nx = x + dx, ny = y + dy
+                if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
+                if (orig[ny * width + nx] <= 0.5) continue
+                const dist = Math.sqrt(dx * dx + dy * dy)
+                if (dist > R) continue
+                const a = dist <= GROW ? 1 : 1 - (dist - GROW) / FEATHER
+                if (a > best) best = a
+              }
+            }
+            if (best > out[idx]) out[idx] = best
+          }
+        }
+
+        for (let i = 0; i < out.length; i++) px[i * 4 + 3] = Math.round(out[i] * 255)
+        ctx.putImageData(imgData, 0, 0)
+        c.toBlob(b => resolve(b!), 'image/png')
+      }
+      img.src = url
+    })
+  }
+
   async function handleRemoveBg(index: number) {
     setBgState({ index, processing: true, resultBlob: null, error: null })
     // Dos frames para que React pinte el spinner antes de que Wasm bloquee el hilo
     await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())))
     try {
       const { removeBackground } = await import('@imgly/background-removal')
-      const blob = await removeBackground(newImages[index].file, { debug: false })
+      const raw  = await removeBackground(newImages[index].file, { debug: false })
+      const blob = await softEdges(raw)
       setBgState({ index, processing: false, resultBlob: blob, error: null })
     } catch {
       setBgState(prev => prev ? { ...prev, processing: false, error: 'No se pudo procesar la imagen. Intenta con otra.' } : null)
