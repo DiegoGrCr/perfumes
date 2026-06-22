@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { SlidersHorizontal, X, ArrowUpDown, Sparkles } from 'lucide-react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { SlidersHorizontal, X, ArrowUpDown, Sparkles, Loader2 } from 'lucide-react'
 import { Perfume, FilterState, SortOption } from '@/types/perfume'
 import PerfumeCard from './PerfumeCard'
 import FilterSidebar from './FilterSidebar'
@@ -27,9 +27,13 @@ const DEFAULT_FILTERS: FilterState = {
   sortBy: 'featured',
 }
 
+const PAGE_SIZE = 10
+
 export default function CatalogClient({ perfumes }: Props) {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   const filtered = useMemo(() => {
     let list = [...perfumes]
@@ -76,6 +80,24 @@ export default function CatalogClient({ perfumes }: Props) {
 
     return list
   }, [perfumes, filters])
+
+  // Reiniciar al cambiar filtros
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [filters])
+
+  // Infinite scroll: cargar más cuando el sentinel entra en pantalla
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) setVisibleCount(c => c + PAGE_SIZE) },
+      { rootMargin: '200px' }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [filtered.length])
+
+  const visible = filtered.slice(0, visibleCount)
+  const hasMore = visibleCount < filtered.length
 
   const activeFilterCount =
     filters.categories.length +
@@ -229,11 +251,18 @@ export default function CatalogClient({ perfumes }: Props) {
 
         {/* Grid */}
         {filtered.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-            {filtered.map((p) => (
-              <PerfumeCard key={p.id} perfume={p} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+              {visible.map((p) => (
+                <PerfumeCard key={p.id} perfume={p} />
+              ))}
+            </div>
+            {hasMore && (
+              <div ref={sentinelRef} className="flex justify-center py-10">
+                <Loader2 size={20} className="animate-spin" style={{ color: '#C9A84C' }} />
+              </div>
+            )}
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: '#F5F5F5' }}>
