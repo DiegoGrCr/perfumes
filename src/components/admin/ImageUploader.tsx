@@ -50,9 +50,16 @@ function BgRemovalEditor({
   const [cursor,    setCursor]    = useState<{ x: number; y: number } | null>(null)
 
   // Mantener refs sincronizados con el estado
-  useEffect(() => { modeRef.current    = mode      }, [mode])
-  useEffect(() => { brushRef.current   = brushSize }, [brushSize])
-  useEffect(() => { readyRef.current   = ready     }, [ready])
+  useEffect(() => { modeRef.current  = mode      }, [mode])
+  useEffect(() => { brushRef.current = brushSize }, [brushSize])
+  useEffect(() => { readyRef.current = ready     }, [ready])
+
+  // Soltar el pincel aunque el mouseup ocurra fuera del canvas
+  useEffect(() => {
+    const stop = () => { drawing.current = false }
+    window.addEventListener('mouseup', stop)
+    return () => window.removeEventListener('mouseup', stop)
+  }, [])
 
   // Carga resultado en canvas + guarda original en memoria
   useEffect(() => {
@@ -96,7 +103,16 @@ function BgRemovalEditor({
 
     if (modeRef.current === 'restore') {
       const orig = origImgRef.current
-      if (!orig?.complete) return
+      if (!orig) return
+      const doDraw = () => {
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(x, y, r, 0, Math.PI * 2)
+        ctx.clip()
+        ctx.drawImage(orig, 0, 0, canvas.width, canvas.height)
+        ctx.restore()
+      }
+      if (!orig.complete) { orig.onload = doDraw; return }
       ctx.save()
       ctx.beginPath()
       ctx.arc(x, y, r, 0, Math.PI * 2)

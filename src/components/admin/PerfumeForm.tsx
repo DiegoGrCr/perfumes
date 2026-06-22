@@ -129,20 +129,36 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? JSON.stringify(data))
 
+      const VALID_CONC = ['Parfum','EDP','EDT','EDC','Body Mist','Body Spray'] as const
+      // Detectar concentración: primero del nombre, luego de la IA
+      function guessConc(name: string): Concentration | null {
+        const n = name.toUpperCase()
+        if (/\bBODY MIST\b|\bMIST\b/.test(n)) return 'Body Mist'
+        if (/\bBODY SPRAY\b|\bSPRAY\b/.test(n)) return 'Body Spray'
+        if (/\bEDT\b|EAU DE TOILETTE/.test(n)) return 'EDT'
+        if (/\bEDC\b|EAU DE COLOGNE/.test(n)) return 'EDC'
+        if (/\bEDP\b|EAU DE PARFUM/.test(n)) return 'EDP'
+        if (/\bEXTRAIT\b|\bPARFUM\b/.test(n)) return 'Parfum'
+        return null
+      }
+      const concFromName = guessConc(form.name)
+      const concFromAI   = VALID_CONC.includes(data.concentration) ? data.concentration as Concentration : null
+
       setForm(f => ({
         ...f,
-        brand:       (data.brand && data.brand.trim()) ? data.brand.trim() : f.brand,
-        gender:      (['hombre','mujer','unisex'] as const).includes(data.gender) ? data.gender : f.gender,
-        category:    (['arabe','disenador','nicho','otros'] as const).includes(data.category) ? data.category : f.category,
-        description: data.description ?? f.description,
-        notes_top:   Array.isArray(data.notes_top)   && data.notes_top.length   ? data.notes_top   : f.notes_top,
-        notes_heart: Array.isArray(data.notes_heart) && data.notes_heart.length ? data.notes_heart : f.notes_heart,
-        notes_base:  Array.isArray(data.notes_base)  && data.notes_base.length  ? data.notes_base  : f.notes_base,
-        scent_type:  data.scent_type  || f.scent_type,
-        longevity:   data.longevity   || f.longevity,
-        sillage:     data.sillage     || f.sillage,
-        seasons:     Array.isArray(data.seasons)   && data.seasons.length   ? data.seasons   : f.seasons,
-        occasions:   Array.isArray(data.occasions) && data.occasions.length ? data.occasions : f.occasions,
+        brand:         (data.brand && data.brand.trim()) ? data.brand.trim() : f.brand,
+        gender:        (['hombre','mujer','unisex'] as const).includes(data.gender) ? data.gender : f.gender,
+        category:      (['arabe','disenador','nicho','otros'] as const).includes(data.category) ? data.category : f.category,
+        concentration: concFromName ?? concFromAI ?? f.concentration,
+        description:   data.description ?? f.description,
+        notes_top:     Array.isArray(data.notes_top)   && data.notes_top.length   ? data.notes_top   : f.notes_top,
+        notes_heart:   Array.isArray(data.notes_heart) && data.notes_heart.length ? data.notes_heart : f.notes_heart,
+        notes_base:    Array.isArray(data.notes_base)  && data.notes_base.length  ? data.notes_base  : f.notes_base,
+        scent_type:    data.scent_type  || f.scent_type,
+        longevity:     data.longevity   || f.longevity,
+        sillage:       data.sillage     || f.sillage,
+        seasons:       Array.isArray(data.seasons)   && data.seasons.length   ? data.seasons   : f.seasons,
+        occasions:     Array.isArray(data.occasions) && data.occasions.length ? data.occasions : f.occasions,
       }))
     } catch (e) {
       setAiError(e instanceof Error ? e.message : 'Error desconocido')
