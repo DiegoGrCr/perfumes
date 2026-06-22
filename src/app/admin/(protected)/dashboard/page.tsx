@@ -38,7 +38,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             <ShoppingBag size={18} style={{ color: '#C9A84C' }} />
             <span className="text-sm font-light tracking-[0.2em] uppercase" style={{ color: '#F5F0E8' }}>
-              Essence <span style={{ color: '#C9A84C' }}>Admin</span>
+              Velvet <span style={{ color: '#C9A84C' }}>Admin</span>
             </span>
           </div>
           <div className="flex items-center gap-4">

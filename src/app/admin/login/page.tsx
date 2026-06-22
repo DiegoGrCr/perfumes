@@ -54,7 +54,7 @@ export default function LoginPage() {
             <Lock size={22} style={{ color: '#C9A84C' }} />
           </div>
           <h1 className="text-2xl font-light tracking-[0.3em] uppercase" style={{ color: '#F5F0E8' }}>
-            Essence
+            Velvet
           </h1>
           <p className="text-xs mt-1 tracking-widest uppercase" style={{ color: '#555' }}>
             Panel de administración
