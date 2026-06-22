@@ -24,3 +24,13 @@ body {
 input[type="checkbox"] { accent-color: #C9A84C; }
 input[type="range"]    { accent-color: #C9A84C; }
 input:focus, button:focus { outline: 1px solid rgba(201,168,76,0.4); outline-offset: 2px; }
+
+@keyframes cartBounce {
+  0%   { transform: scale(1)    rotate(0deg); }
+  20%  { transform: scale(1.4)  rotate(-10deg); }
+  40%  { transform: scale(1.2)  rotate(6deg); }
+  60%  { transform: scale(1.1)  rotate(-3deg); }
+  80%  { transform: scale(1.05) rotate(1deg); }
+  100% { transform: scale(1)    rotate(0deg); }
+}
+.cart-bounce { animation: cartBounce 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }

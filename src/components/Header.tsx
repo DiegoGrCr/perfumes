@@ -4,7 +4,7 @@ import { ShoppingBag, Phone } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
 
 export default function Header() {
-  const { totalItems, openDrawer } = useCart()
+  const { totalItems, openDrawer, cartBagRef } = useCart()
 
   return (
     <header
@@ -37,6 +37,7 @@ export default function Header() {
 
             {/* Carrito */}
             <button
+              ref={cartBagRef}
               onClick={openDrawer}
               className="relative p-2 transition-colors duration-200"
               style={{ color: '#888' }}

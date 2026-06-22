@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+
 import { useRouter } from 'next/navigation'
 import { ShoppingBag, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Perfume, CATEGORY_LABELS, GENDER_LABELS } from '@/types/perfume'
 import { useCart } from '@/context/CartContext'
 
 interface Props { perfume: Perfume }
+
 
 const CATEGORY_ACCENT: Record<string, string> = {
   arabe:     '#C9A84C',
@@ -55,11 +57,19 @@ function BottleIcon({ category }: { category: string }) {
 
 export default function PerfumeCard({ perfume }: Props) {
   const router = useRouter()
-  const { addItem, openDrawer } = useCart()
+  const { addItem, flyToCart } = useCart()
   const images = perfume.images ?? []
   const hasImages = images.length > 0
   const [imgIdx, setImgIdx] = useState(0)
   const pausedRef = useRef(false)
+  const imgRef = useRef<HTMLImageElement>(null)
+
+  const handleAddToCart = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    addItem(perfume, perfume.volume_ml)
+    const el = imgRef.current ?? (e.currentTarget as HTMLElement)
+    flyToCart(el, images[imgIdx]?.url)
+  }, [addItem, flyToCart, perfume, images, imgIdx])
 
   useEffect(() => {
     if (images.length <= 1) return
@@ -107,6 +117,7 @@ export default function PerfumeCard({ perfume }: Props) {
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
+              ref={imgRef}
               src={images[imgIdx].url}
               alt={perfume.name}
               className="w-full h-full object-contain p-6 transition-transform duration-500 group-hover:scale-105"
@@ -232,7 +243,7 @@ export default function PerfumeCard({ perfume }: Props) {
             <button
               className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[10px] tracking-widest uppercase font-medium transition-all duration-200"
               style={{ background: accent, color: '#fff' }}
-              onClick={e => { e.stopPropagation(); addItem(perfume, perfume.volume_ml); openDrawer() }}
+              onClick={handleAddToCart}
               onMouseEnter={e => { e.currentTarget.style.opacity = '0.85' }}
               onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
             >
