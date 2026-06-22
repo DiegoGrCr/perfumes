@@ -88,8 +88,8 @@ function BgRemovalEditor({
     img.src = url
   }, [resultBlob, originalSrc])
 
-  // Sin useCallback: lee siempre de refs → nunca hay closure stale
-  function doPaint(e: React.MouseEvent<HTMLCanvasElement>) {
+  // Lee siempre de refs → nunca hay closure stale
+  function paintAt(clientX: number, clientY: number) {
     if (!drawing.current || !readyRef.current) return
     const canvas = canvasRef.current
     if (!canvas) return
@@ -97,8 +97,8 @@ function BgRemovalEditor({
     const rect = canvas.getBoundingClientRect()
     const sx   = canvas.width  / rect.width
     const sy   = canvas.height / rect.height
-    const x    = (e.clientX - rect.left) * sx
-    const y    = (e.clientY - rect.top)  * sy
+    const x    = (clientX - rect.left) * sx
+    const y    = (clientY - rect.top)  * sy
     const r    = (brushRef.current / 2) * Math.max(sx, sy)
 
     if (modeRef.current === 'restore') {
@@ -135,8 +135,48 @@ function BgRemovalEditor({
     if (!canvas) return
     const rect = canvas.getBoundingClientRect()
     setCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-    doPaint(e)
+    paintAt(e.clientX, e.clientY)
   }
+
+  // Touch: listeners no-pasivos para poder llamar preventDefault() y evitar scroll
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    function onTouchStart(e: TouchEvent) {
+      e.preventDefault()
+      drawing.current = true
+      const t = e.touches[0]
+      if (!t) return
+      const rect = canvas!.getBoundingClientRect()
+      setCursor({ x: t.clientX - rect.left, y: t.clientY - rect.top })
+      paintAt(t.clientX, t.clientY)
+    }
+    function onTouchMove(e: TouchEvent) {
+      e.preventDefault()
+      const t = e.touches[0]
+      if (!t) return
+      const rect = canvas!.getBoundingClientRect()
+      setCursor({ x: t.clientX - rect.left, y: t.clientY - rect.top })
+      paintAt(t.clientX, t.clientY)
+    }
+    function onTouchEnd() {
+      drawing.current = false
+      setCursor(null)
+    }
+
+    canvas.addEventListener('touchstart',  onTouchStart,  { passive: false })
+    canvas.addEventListener('touchmove',   onTouchMove,   { passive: false })
+    canvas.addEventListener('touchend',    onTouchEnd)
+    canvas.addEventListener('touchcancel', onTouchEnd)
+    return () => {
+      canvas.removeEventListener('touchstart',  onTouchStart)
+      canvas.removeEventListener('touchmove',   onTouchMove)
+      canvas.removeEventListener('touchend',    onTouchEnd)
+      canvas.removeEventListener('touchcancel', onTouchEnd)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready])
 
   function handleApprove() {
     canvasRef.current?.toBlob(b => { if (b) onApprove(b) }, 'image/png')
