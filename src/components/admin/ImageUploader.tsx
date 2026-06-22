@@ -33,11 +33,11 @@ const CHECKER = {
 }
 
 function BgRemovalEditor({
-  originalSrc, resultBlob, onApprove, onCancel,
+  originalFile, resultBlob, onApprove, onCancel,
 }: {
-  originalSrc: string
-  resultBlob:  Blob
-  onApprove:   (blob: Blob) => void
+  originalFile: File
+  resultBlob:   Blob
+  onApprove:    (blob: Blob) => void
   onCancel:    () => void
 }) {
   const canvasRef  = useRef<HTMLCanvasElement>(null)
@@ -71,16 +71,13 @@ function BgRemovalEditor({
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
 
-    // Original: convertir a blob URL estable antes de cargar
-    // (el preview puede quedar inválido si la imagen se reemplaza)
-    const origBlobUrl = originalSrc.startsWith('blob:') ? originalSrc : originalSrc
+    // Original: URL fresca desde el File — nunca queda inválida
+    const origUrl = URL.createObjectURL(originalFile)
     const orig = new Image()
-    orig.onerror = () => {
-      // Si falla, intentar recargar desde la misma URL
-      console.warn('Original image failed to load, restore mode unavailable')
-    }
-    orig.src = origBlobUrl
+    orig.src = origUrl
     origImgRef.current = orig
+    orig.onload  = () => { /* listo para modo restaurar */ }
+    orig.onerror = () => console.warn('Original image failed to load')
 
     // Resultado: única imagen necesaria para activar el editor
     const url = URL.createObjectURL(resultBlob)
@@ -96,7 +93,8 @@ function BgRemovalEditor({
     }
     img.onerror = () => { URL.revokeObjectURL(url) }
     img.src = url
-  }, [resultBlob, originalSrc])
+    return () => { URL.revokeObjectURL(origUrl) }
+  }, [resultBlob, originalFile])
 
   // Lee siempre de refs → nunca hay closure stale
   function paintAt(clientX: number, clientY: number) {
@@ -672,7 +670,7 @@ export function ImageUploader({
       {/* ── Editor de retoque ── */}
       {bgState && !bgState.processing && !bgState.error && bgState.resultBlob && (
         <BgRemovalEditor
-          originalSrc={newImages[bgState.index]?.preview ?? ''}
+          originalFile={newImages[bgState.index]!.file}
           resultBlob={bgState.resultBlob}
           onApprove={handleApproveResult}
           onCancel={handleCancelBg}
