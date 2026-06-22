@@ -117,7 +117,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       } else {
         fly.remove()
         toEl.classList.add('cart-bounce')
-        setTimeout(() => toEl.classList.remove('cart-bounce'), 560)
+        setTimeout(() => toEl?.classList.remove('cart-bounce'), 560)
       }
     }
 
