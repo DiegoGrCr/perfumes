@@ -337,11 +337,11 @@ export function ImageUploader({
 
     if (!_rmbgModel || !_rmbgProcessor) {
       onStatus('Descargando modelo IA (~44 MB, solo la primera vez)…')
-      _rmbgModel = await AutoModel.from_pretrained('briaai/RMBG-1.4', {
+      _rmbgModel = await (AutoModel as any).from_pretrained('briaai/RMBG-1.4', {
         config: { model_type: 'custom' },
-        dtype: 'q8' as never,
+        dtype: 'q8',
       })
-      _rmbgProcessor = await AutoProcessor.from_pretrained('briaai/RMBG-1.4', {
+      _rmbgProcessor = await (AutoProcessor as any).from_pretrained('briaai/RMBG-1.4', {
         config: {
           do_normalize: true, do_pad: false, do_rescale: true, do_resize: true,
           image_mean: [0.5, 0.5, 0.5],
