@@ -21,6 +21,10 @@ interface ImageUploaderProps {
 
 const MAX_IMAGES = 3
 
+// Singleton del modelo RMBG (se carga una sola vez y queda en memoria)
+let _rmbgModel:     unknown = null
+let _rmbgProcessor: unknown = null
+
 // ── Canvas retoque ────────────────────────────────────────────────────────────
 const CHECKER = {
   backgroundImage: 'linear-gradient(45deg,#333 25%,transparent 25%),linear-gradient(-45deg,#333 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#333 75%),linear-gradient(-45deg,transparent 75%,#333 75%)',
@@ -297,6 +301,7 @@ export function ImageUploader({
   const [bgState, setBgState]   = useState<{
     index: number
     processing: boolean
+    statusMsg: string
     resultBlob: Blob | null
     error: string | null
   } | null>(null)
@@ -321,9 +326,74 @@ export function ImageUploader({
     if (e.dataTransfer.files) processFiles(e.dataTransfer.files)
   }
 
-  // Elimina fondo por color + flood-fill desde bordes.
-  // Funciona bien para fondos sólidos (blanco, gris, etc.) sin afectar
-  // las partes del frasco que coinciden en color con el fondo.
+  // Elimina fondo con RMBG-1.4 (BRIA AI) via @huggingface/transformers.
+  // El modelo (~44 MB q8) se descarga la primera vez y queda en caché del navegador.
+  async function removeBgWithRMBG(
+    file: File,
+    onStatus: (msg: string) => void,
+  ): Promise<Blob> {
+    const { AutoModel, AutoProcessor, RawImage } =
+      await import('@huggingface/transformers')
+
+    if (!_rmbgModel || !_rmbgProcessor) {
+      onStatus('Descargando modelo IA (~44 MB, solo la primera vez)…')
+      _rmbgModel = await AutoModel.from_pretrained('briaai/RMBG-1.4', {
+        config: { model_type: 'custom' },
+        dtype: 'q8' as never,
+      })
+      _rmbgProcessor = await AutoProcessor.from_pretrained('briaai/RMBG-1.4', {
+        config: {
+          do_normalize: true, do_pad: false, do_rescale: true, do_resize: true,
+          image_mean: [0.5, 0.5, 0.5],
+          feature_extractor_type: 'ImageFeatureExtractor',
+          image_std: [1, 1, 1],
+          resample: 2,
+          rescale_factor: 0.00392156862745098,
+          size: { width: 1024, height: 1024 },
+        },
+      })
+    }
+
+    onStatus('Procesando imagen…')
+
+    const url = URL.createObjectURL(file)
+    const image = await (RawImage as any).fromURL(url)
+    URL.revokeObjectURL(url)
+
+    const model     = _rmbgModel     as any
+    const processor = _rmbgProcessor as any
+
+    const { pixel_values } = await processor(image)
+    const { output }       = await model({ input: pixel_values })
+
+    // output[0]: tensor [1, H, W] con valores 0-1 → máscara alpha
+    const mask = await (RawImage as any).fromTensor(
+      output[0].mul(255).to('uint8')
+    ).resize(image.width, image.height)
+
+    // Dibujar imagen original + aplicar máscara como canal alpha
+    const canvas = document.createElement('canvas')
+    canvas.width = image.width; canvas.height = image.height
+    const ctx = canvas.getContext('2d')!
+
+    await new Promise<void>(res => {
+      const img = new Image()
+      const origUrl = URL.createObjectURL(file)
+      img.onload = () => { ctx.drawImage(img, 0, 0); URL.revokeObjectURL(origUrl); res() }
+      img.src = origUrl
+    })
+
+    const imgData  = ctx.getImageData(0, 0, image.width, image.height)
+    const maskData = mask.data as Uint8Array
+    for (let i = 0; i < image.width * image.height; i++) {
+      imgData.data[i * 4 + 3] = maskData[i]
+    }
+    ctx.putImageData(imgData, 0, 0)
+
+    return new Promise(res => canvas.toBlob(b => res(b!), 'image/png'))
+  }
+
+  // Elimina fondo por color + flood-fill (fallback rápido sin descarga)
   async function removeBgByColor(file: File): Promise<Blob> {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file)
@@ -431,13 +501,23 @@ export function ImageUploader({
   }
 
   async function handleRemoveBg(index: number) {
-    setBgState({ index, processing: true, resultBlob: null, error: null })
+    const setStatus = (msg: string) =>
+      setBgState(prev => prev ? { ...prev, statusMsg: msg } : null)
+
+    setBgState({ index, processing: true, statusMsg: 'Eliminando fondo…', resultBlob: null, error: null })
     await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())))
     try {
-      const blob = await removeBgByColor(newImages[index].file)
-      setBgState({ index, processing: false, resultBlob: blob, error: null })
-    } catch (err) {
-      setBgState(prev => prev ? { ...prev, processing: false, error: err instanceof Error ? err.message : 'No se pudo procesar la imagen.' } : null)
+      const blob = await removeBgWithRMBG(newImages[index].file, setStatus)
+      setBgState({ index, processing: false, statusMsg: '', resultBlob: blob, error: null })
+    } catch {
+      // Fallback: método por color si el modelo falla
+      try {
+        setStatus('Usando método alternativo…')
+        const blob = await removeBgByColor(newImages[index].file)
+        setBgState({ index, processing: false, statusMsg: '', resultBlob: blob, error: null })
+      } catch (err2) {
+        setBgState(prev => prev ? { ...prev, processing: false, error: err2 instanceof Error ? err2.message : 'No se pudo procesar la imagen.' } : null)
+      }
     }
   }
 
@@ -560,7 +640,7 @@ export function ImageUploader({
           <div className="rounded-2xl p-8 flex flex-col items-center gap-4"
             style={{ background: '#111', border: '1px solid #2a2a2a' }}>
             <Loader2 size={36} className="animate-spin" style={{ color: '#a78bfa' }} />
-            <p className="text-sm" style={{ color: '#888' }}>Eliminando fondo…</p>
+            <p className="text-sm" style={{ color: '#888' }}>{bgState?.statusMsg || 'Eliminando fondo…'}</p>
           </div>
         </div>
       )}
