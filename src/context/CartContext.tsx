@@ -65,6 +65,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   function flyToCart(fromEl: HTMLElement, imageUrl?: string) {
     const toEl = cartBagRef.current
     if (!toEl) return
+    const bagEl = toEl  // capturar como no-null para el closure
 
     const from = fromEl.getBoundingClientRect()
     const to   = toEl.getBoundingClientRect()
@@ -116,8 +117,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         requestAnimationFrame(frame)
       } else {
         fly.remove()
-        toEl.classList.add('cart-bounce')
-        setTimeout(() => toEl?.classList.remove('cart-bounce'), 560)
+        bagEl.classList.add('cart-bounce')
+        setTimeout(() => bagEl.classList.remove('cart-bounce'), 560)
       }
     }
 
