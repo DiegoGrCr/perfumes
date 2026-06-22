@@ -321,8 +321,10 @@ export function ImageUploader({
     if (e.dataTransfer.files) processFiles(e.dataTransfer.files)
   }
 
-  // Post-procesa el blob: recupera ~2px de borde perdido + suaviza orillas con feathering
-  async function softEdges(inputBlob: Blob): Promise<Blob> {
+  // Rellena huecos interiores del sujeto (partes blancas del frasco que la IA quitó por error)
+  // usando flood-fill desde los 4 bordes: solo los píxeles transparentes conectados
+  // al borde son fondo real; el resto son huecos internos → se restauran.
+  async function fixMask(inputBlob: Blob): Promise<Blob> {
     return new Promise(resolve => {
       const url = URL.createObjectURL(inputBlob)
       const img = new Image()
@@ -335,37 +337,62 @@ export function ImageUploader({
         ctx.drawImage(img, 0, 0)
         const imgData = ctx.getImageData(0, 0, width, height)
         const px = imgData.data
+        const n  = width * height
 
-        // Extraer alpha original como float
-        const orig = new Float32Array(width * height)
-        for (let i = 0; i < orig.length; i++) orig[i] = px[i * 4 + 3] / 255
+        // isFG: 1 = el modelo dejó este píxel como sujeto
+        const THRESH = 64
+        const isFG = new Uint8Array(n)
+        for (let i = 0; i < n; i++) isFG[i] = px[i * 4 + 3] >= THRESH ? 1 : 0
 
-        const GROW    = 2  // píxeles a recuperar
-        const FEATHER = 4  // píxeles de degradado suave
-        const R = GROW + FEATHER
-        const out = new Float32Array(orig)
+        // BFS desde todos los píxeles de borde que son transparentes → fondo confirmado
+        const isBG = new Uint8Array(n)
+        const queue = new Int32Array(n)
+        let head = 0, tail = 0
 
+        const seed = (i: number) => { if (!isFG[i] && !isBG[i]) { isBG[i] = 1; queue[tail++] = i } }
+
+        for (let x = 0; x < width; x++)  { seed(x); seed((height - 1) * width + x) }
+        for (let y = 1; y < height - 1; y++) { seed(y * width); seed(y * width + width - 1) }
+
+        while (head < tail) {
+          const i = queue[head++]
+          const x = i % width, y = (i / width) | 0
+          if (x > 0         && !isFG[i - 1]     && !isBG[i - 1])     { isBG[i - 1]     = 1; queue[tail++] = i - 1 }
+          if (x < width - 1 && !isFG[i + 1]     && !isBG[i + 1])     { isBG[i + 1]     = 1; queue[tail++] = i + 1 }
+          if (y > 0         && !isFG[i - width]  && !isBG[i - width]) { isBG[i - width] = 1; queue[tail++] = i - width }
+          if (y < height - 1&& !isFG[i + width]  && !isBG[i + width]) { isBG[i + width] = 1; queue[tail++] = i + width }
+        }
+
+        // Transparente pero NO conectado al borde = hueco interior → restaurar opaco
+        for (let i = 0; i < n; i++) {
+          if (!isFG[i] && !isBG[i]) px[i * 4 + 3] = 255
+        }
+
+        // Suavizar orillas: feathering de 3px en la frontera sujeto↔fondo real
+        const orig = new Float32Array(n)
+        for (let i = 0; i < n; i++) orig[i] = px[i * 4 + 3] / 255
+        const FEATHER = 3
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             const idx = y * width + x
-            if (orig[idx] > 0.5) continue  // ya es foreground
+            if (orig[idx] > 0.5) continue
+            if (!isBG[idx]) continue  // hueco ya restaurado, no tocar
             let best = 0
-            for (let dy = -R; dy <= R; dy++) {
-              for (let dx = -R; dx <= R; dx++) {
+            for (let dy = -FEATHER; dy <= FEATHER; dy++) {
+              for (let dx = -FEATHER; dx <= FEATHER; dx++) {
                 const nx = x + dx, ny = y + dy
                 if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
                 if (orig[ny * width + nx] <= 0.5) continue
                 const dist = Math.sqrt(dx * dx + dy * dy)
-                if (dist > R) continue
-                const a = dist <= GROW ? 1 : 1 - (dist - GROW) / FEATHER
+                if (dist > FEATHER) continue
+                const a = 1 - dist / (FEATHER + 1)
                 if (a > best) best = a
               }
             }
-            if (best > out[idx]) out[idx] = best
+            if (best > 0) px[idx * 4 + 3] = Math.round(best * 255)
           }
         }
 
-        for (let i = 0; i < out.length; i++) px[i * 4 + 3] = Math.round(out[i] * 255)
         ctx.putImageData(imgData, 0, 0)
         c.toBlob(b => resolve(b!), 'image/png')
       }
@@ -375,12 +402,11 @@ export function ImageUploader({
 
   async function handleRemoveBg(index: number) {
     setBgState({ index, processing: true, resultBlob: null, error: null })
-    // Dos frames para que React pinte el spinner antes de que Wasm bloquee el hilo
     await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())))
     try {
       const { removeBackground } = await import('@imgly/background-removal')
       const raw  = await removeBackground(newImages[index].file, { debug: false })
-      const blob = await softEdges(raw)
+      const blob = await fixMask(raw)
       setBgState({ index, processing: false, resultBlob: blob, error: null })
     } catch {
       setBgState(prev => prev ? { ...prev, processing: false, error: 'No se pudo procesar la imagen. Intenta con otra.' } : null)
