@@ -458,9 +458,9 @@ export function ImageUploader({
         for (let i = 0; i < n; i++) px[i*4+3] = isBG[i] ? 0 : 255
 
         // 5. Feathering: 3 pasadas de box-blur separable (≈ Gaussiano, orillas suaves)
-        const boxBlur = (src: Float32Array, K: number): Float32Array => {
-          const tmp = new Float32Array(n)
-          const out = new Float32Array(n)
+        const boxBlur = (src: Float32Array<ArrayBuffer>, K: number): Float32Array<ArrayBuffer> => {
+          const tmp = new Float32Array(n) as Float32Array<ArrayBuffer>
+          const out = new Float32Array(n) as Float32Array<ArrayBuffer>
           for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
               let s = 0, c = 0
@@ -484,7 +484,7 @@ export function ImageUploader({
           return out
         }
 
-        let alpha = new Float32Array(n)
+        let alpha = new Float32Array(n) as Float32Array<ArrayBuffer>
         for (let i = 0; i < n; i++) alpha[i] = isBG[i] ? 0 : 1
         // 3 pasadas de K=3 ≈ Gaussiano con sigma~5px → orilla suave de ~10px
         alpha = boxBlur(alpha, 3)
