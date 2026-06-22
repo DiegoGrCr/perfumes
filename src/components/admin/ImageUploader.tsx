@@ -71,9 +71,15 @@ function BgRemovalEditor({
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
 
-    // Original: en memoria para modo restaurar (sin mostrarlo como ghost)
+    // Original: convertir a blob URL estable antes de cargar
+    // (el preview puede quedar inválido si la imagen se reemplaza)
+    const origBlobUrl = originalSrc.startsWith('blob:') ? originalSrc : originalSrc
     const orig = new Image()
-    orig.src = originalSrc
+    orig.onerror = () => {
+      // Si falla, intentar recargar desde la misma URL
+      console.warn('Original image failed to load, restore mode unavailable')
+    }
+    orig.src = origBlobUrl
     origImgRef.current = orig
 
     // Resultado: única imagen necesaria para activar el editor
@@ -107,16 +113,19 @@ function BgRemovalEditor({
 
     if (modeRef.current === 'restore') {
       const orig = origImgRef.current
+      // naturalWidth === 0 significa imagen rota o no cargada aún
       if (!orig) return
+      const isReady = orig.complete && orig.naturalWidth > 0
       const doDraw = () => {
+        if (!origImgRef.current?.naturalWidth) return
         ctx.save()
         ctx.beginPath()
         ctx.arc(x, y, r, 0, Math.PI * 2)
         ctx.clip()
-        ctx.drawImage(orig, 0, 0, canvas.width, canvas.height)
+        ctx.drawImage(origImgRef.current, 0, 0, canvas.width, canvas.height)
         ctx.restore()
       }
-      if (!orig.complete) { orig.onload = doDraw; return }
+      if (!isReady) { orig.onload = doDraw; return }
       ctx.save()
       ctx.beginPath()
       ctx.arc(x, y, r, 0, Math.PI * 2)
