@@ -387,31 +387,41 @@ export function ImageUploader({
         // 4. Alpha inicial: fondo=0, sujeto=255
         for (let i = 0; i < n; i++) px[i*4+3] = isBG[i] ? 0 : 255
 
-        // 5. Feathering: box-blur separable sobre el canal alpha (suaviza orillas)
-        const alpha = new Float32Array(n)
-        for (let i = 0; i < n; i++) alpha[i] = px[i*4+3] / 255
-        const tmp = new Float32Array(n)
-        const K = 2  // radio del blur
-        for (let y = 0; y < height; y++) {       // blur horizontal
-          for (let x = 0; x < width; x++) {
-            let s = 0, c = 0
-            for (let dx = -K; dx <= K; dx++) {
-              const nx = x + dx
-              if (nx >= 0 && nx < width) { s += alpha[y*width+nx]; c++ }
+        // 5. Feathering: 3 pasadas de box-blur separable (≈ Gaussiano, orillas suaves)
+        const boxBlur = (src: Float32Array, K: number): Float32Array => {
+          const tmp = new Float32Array(n)
+          const out = new Float32Array(n)
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              let s = 0, c = 0
+              for (let dx = -K; dx <= K; dx++) {
+                const nx = x + dx
+                if (nx >= 0 && nx < width) { s += src[y*width+nx]; c++ }
+              }
+              tmp[y*width+x] = s / c
             }
-            tmp[y*width+x] = s / c
           }
-        }
-        for (let y = 0; y < height; y++) {       // blur vertical
-          for (let x = 0; x < width; x++) {
-            let s = 0, c = 0
-            for (let dy = -K; dy <= K; dy++) {
-              const ny = y + dy
-              if (ny >= 0 && ny < height) { s += tmp[ny*width+x]; c++ }
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              let s = 0, c = 0
+              for (let dy = -K; dy <= K; dy++) {
+                const ny = y + dy
+                if (ny >= 0 && ny < height) { s += tmp[ny*width+x]; c++ }
+              }
+              out[y*width+x] = s / c
             }
-            px[(y*width+x)*4+3] = Math.round(s / c * 255)
           }
+          return out
         }
+
+        let alpha = new Float32Array(n)
+        for (let i = 0; i < n; i++) alpha[i] = isBG[i] ? 0 : 1
+        // 3 pasadas de K=3 ≈ Gaussiano con sigma~5px → orilla suave de ~10px
+        alpha = boxBlur(alpha, 3)
+        alpha = boxBlur(alpha, 3)
+        alpha = boxBlur(alpha, 3)
+
+        for (let i = 0; i < n; i++) px[i*4+3] = Math.round(alpha[i] * 255)
 
         ctx.putImageData(imgData, 0, 0)
         cv.toBlob(b => resolve(b!), 'image/png')
