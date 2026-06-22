@@ -321,80 +321,100 @@ export function ImageUploader({
     if (e.dataTransfer.files) processFiles(e.dataTransfer.files)
   }
 
-  // Rellena huecos interiores del sujeto (partes blancas del frasco que la IA quitó por error)
-  // usando flood-fill desde los 4 bordes: solo los píxeles transparentes conectados
-  // al borde son fondo real; el resto son huecos internos → se restauran.
-  async function fixMask(inputBlob: Blob): Promise<Blob> {
-    return new Promise(resolve => {
-      const url = URL.createObjectURL(inputBlob)
+  // Elimina fondo por color + flood-fill desde bordes.
+  // Funciona bien para fondos sólidos (blanco, gris, etc.) sin afectar
+  // las partes del frasco que coinciden en color con el fondo.
+  async function removeBgByColor(file: File): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file)
       const img = new Image()
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen')) }
       img.onload = () => {
         URL.revokeObjectURL(url)
         const { width, height } = img
-        const c = document.createElement('canvas')
-        c.width = width; c.height = height
-        const ctx = c.getContext('2d')!
+        const cv = document.createElement('canvas')
+        cv.width = width; cv.height = height
+        const ctx = cv.getContext('2d')!
         ctx.drawImage(img, 0, 0)
         const imgData = ctx.getImageData(0, 0, width, height)
         const px = imgData.data
         const n  = width * height
 
-        // isFG: 1 = el modelo dejó este píxel como sujeto
-        const THRESH = 64
-        const isFG = new Uint8Array(n)
-        for (let i = 0; i < n; i++) isFG[i] = px[i * 4 + 3] >= THRESH ? 1 : 0
+        // 1. Muestra el color de fondo desde las 4 esquinas (5×5 px cada una)
+        const S = 5
+        let sr = 0, sg = 0, sb = 0, sc = 0
+        for (let dy = 0; dy < S; dy++) {
+          for (let dx = 0; dx < S; dx++) {
+            for (const i of [
+              dx + dy * width,
+              (width - 1 - dx) + dy * width,
+              dx + (height - 1 - dy) * width,
+              (width - 1 - dx) + (height - 1 - dy) * width,
+            ]) {
+              sr += px[i*4]; sg += px[i*4+1]; sb += px[i*4+2]; sc++
+            }
+          }
+        }
+        const bgR = sr / sc, bgG = sg / sc, bgB = sb / sc
 
-        // BFS desde todos los píxeles de borde que son transparentes → fondo confirmado
+        // 2. Marcar píxeles candidatos a fondo (similares en color al fondo muestreado)
+        // Umbral amplio para capturar gradientes de borde
+        const THRESH = 50
+        const isMaybe = new Uint8Array(n)
+        for (let i = 0; i < n; i++) {
+          const dr = px[i*4]   - bgR
+          const dg = px[i*4+1] - bgG
+          const db = px[i*4+2] - bgB
+          if (dr*dr + dg*dg + db*db <= THRESH * THRESH) isMaybe[i] = 1
+        }
+
+        // 3. Flood-fill desde los 4 bordes → solo lo conectado al exterior es fondo
         const isBG = new Uint8Array(n)
         const queue = new Int32Array(n)
         let head = 0, tail = 0
-
-        const seed = (i: number) => { if (!isFG[i] && !isBG[i]) { isBG[i] = 1; queue[tail++] = i } }
-
-        for (let x = 0; x < width; x++)  { seed(x); seed((height - 1) * width + x) }
-        for (let y = 1; y < height - 1; y++) { seed(y * width); seed(y * width + width - 1) }
-
+        const seed = (i: number) => { if (isMaybe[i] && !isBG[i]) { isBG[i] = 1; queue[tail++] = i } }
+        for (let x = 0; x < width; x++) { seed(x); seed((height-1)*width+x) }
+        for (let y = 1; y < height-1; y++) { seed(y*width); seed(y*width+width-1) }
         while (head < tail) {
           const i = queue[head++]
           const x = i % width, y = (i / width) | 0
-          if (x > 0         && !isFG[i - 1]     && !isBG[i - 1])     { isBG[i - 1]     = 1; queue[tail++] = i - 1 }
-          if (x < width - 1 && !isFG[i + 1]     && !isBG[i + 1])     { isBG[i + 1]     = 1; queue[tail++] = i + 1 }
-          if (y > 0         && !isFG[i - width]  && !isBG[i - width]) { isBG[i - width] = 1; queue[tail++] = i - width }
-          if (y < height - 1&& !isFG[i + width]  && !isBG[i + width]) { isBG[i + width] = 1; queue[tail++] = i + width }
+          if (x > 0          && isMaybe[i-1]     && !isBG[i-1])     { isBG[i-1]     = 1; queue[tail++] = i-1     }
+          if (x < width-1    && isMaybe[i+1]     && !isBG[i+1])     { isBG[i+1]     = 1; queue[tail++] = i+1     }
+          if (y > 0          && isMaybe[i-width]  && !isBG[i-width]) { isBG[i-width] = 1; queue[tail++] = i-width }
+          if (y < height-1   && isMaybe[i+width]  && !isBG[i+width]) { isBG[i+width] = 1; queue[tail++] = i+width }
         }
 
-        // Transparente pero NO conectado al borde = hueco interior → restaurar opaco
-        for (let i = 0; i < n; i++) {
-          if (!isFG[i] && !isBG[i]) px[i * 4 + 3] = 255
-        }
+        // 4. Alpha inicial: fondo=0, sujeto=255
+        for (let i = 0; i < n; i++) px[i*4+3] = isBG[i] ? 0 : 255
 
-        // Suavizar orillas: feathering de 3px en la frontera sujeto↔fondo real
-        const orig = new Float32Array(n)
-        for (let i = 0; i < n; i++) orig[i] = px[i * 4 + 3] / 255
-        const FEATHER = 3
-        for (let y = 0; y < height; y++) {
+        // 5. Feathering: box-blur separable sobre el canal alpha (suaviza orillas)
+        const alpha = new Float32Array(n)
+        for (let i = 0; i < n; i++) alpha[i] = px[i*4+3] / 255
+        const tmp = new Float32Array(n)
+        const K = 2  // radio del blur
+        for (let y = 0; y < height; y++) {       // blur horizontal
           for (let x = 0; x < width; x++) {
-            const idx = y * width + x
-            if (orig[idx] > 0.5) continue
-            if (!isBG[idx]) continue  // hueco ya restaurado, no tocar
-            let best = 0
-            for (let dy = -FEATHER; dy <= FEATHER; dy++) {
-              for (let dx = -FEATHER; dx <= FEATHER; dx++) {
-                const nx = x + dx, ny = y + dy
-                if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
-                if (orig[ny * width + nx] <= 0.5) continue
-                const dist = Math.sqrt(dx * dx + dy * dy)
-                if (dist > FEATHER) continue
-                const a = 1 - dist / (FEATHER + 1)
-                if (a > best) best = a
-              }
+            let s = 0, c = 0
+            for (let dx = -K; dx <= K; dx++) {
+              const nx = x + dx
+              if (nx >= 0 && nx < width) { s += alpha[y*width+nx]; c++ }
             }
-            if (best > 0) px[idx * 4 + 3] = Math.round(best * 255)
+            tmp[y*width+x] = s / c
+          }
+        }
+        for (let y = 0; y < height; y++) {       // blur vertical
+          for (let x = 0; x < width; x++) {
+            let s = 0, c = 0
+            for (let dy = -K; dy <= K; dy++) {
+              const ny = y + dy
+              if (ny >= 0 && ny < height) { s += tmp[ny*width+x]; c++ }
+            }
+            px[(y*width+x)*4+3] = Math.round(s / c * 255)
           }
         }
 
         ctx.putImageData(imgData, 0, 0)
-        c.toBlob(b => resolve(b!), 'image/png')
+        cv.toBlob(b => resolve(b!), 'image/png')
       }
       img.src = url
     })
@@ -404,12 +424,10 @@ export function ImageUploader({
     setBgState({ index, processing: true, resultBlob: null, error: null })
     await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())))
     try {
-      const { removeBackground } = await import('@imgly/background-removal')
-      const raw  = await removeBackground(newImages[index].file, { debug: false })
-      const blob = await fixMask(raw)
+      const blob = await removeBgByColor(newImages[index].file)
       setBgState({ index, processing: false, resultBlob: blob, error: null })
-    } catch {
-      setBgState(prev => prev ? { ...prev, processing: false, error: 'No se pudo procesar la imagen. Intenta con otra.' } : null)
+    } catch (err) {
+      setBgState(prev => prev ? { ...prev, processing: false, error: err instanceof Error ? err.message : 'No se pudo procesar la imagen.' } : null)
     }
   }
 
@@ -521,7 +539,7 @@ export function ImageUploader({
       <p className="text-xs" style={{ color: '#555' }}>
         Máx. {MAX_IMAGES} fotos · JPG, PNG o WebP · hasta 5 MB ·{' '}
         <span style={{ color: '#a78bfa' }}>
-          <Wand2 size={10} className="inline mb-0.5" /> elimina fondo con IA (retocable)
+          <Wand2 size={10} className="inline mb-0.5" /> elimina fondo automático (retocable)
         </span>
       </p>
 
@@ -533,7 +551,6 @@ export function ImageUploader({
             style={{ background: '#111', border: '1px solid #2a2a2a' }}>
             <Loader2 size={36} className="animate-spin" style={{ color: '#a78bfa' }} />
             <p className="text-sm" style={{ color: '#888' }}>Eliminando fondo…</p>
-            <p className="text-xs" style={{ color: '#555' }}>La primera vez descarga el modelo (~15 MB)</p>
           </div>
         </div>
       )}
