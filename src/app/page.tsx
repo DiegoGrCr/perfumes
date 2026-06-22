@@ -47,10 +47,6 @@ export default async function Home() {
             <div className="h-px flex-1 max-w-16" style={{ background: 'linear-gradient(90deg, #C9A84C55, transparent)' }} />
           </div>
 
-          <p className="text-[10px] tracking-[0.6em] uppercase mb-3" style={{ color: '#C9A84C' }}>
-            Colección Exclusiva
-          </p>
-
           <h2 className="text-3xl sm:text-4xl font-light leading-tight mb-3" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>
             El arte de la fragancia
           </h2>
@@ -83,7 +79,7 @@ export default async function Home() {
       {/* Footer */}
       <footer className="text-center py-8" style={{ borderTop: '1px solid #EBEBEB', background: '#fff' }}>
         <p className="text-[10px] tracking-widest uppercase" style={{ color: '#ccc' }}>
-          © 2026 Velvet · Fragancias 100% auténticas
+          © 2026 Velvet · Fragancias auténticas
         </p>
       </footer>
     </div>
