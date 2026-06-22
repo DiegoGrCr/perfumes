@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { Providers } from '@/components/Providers'
+import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister'
 
 export const metadata: Metadata = {
   title: 'Essence Parfumerie — Catálogo de Fragancias',
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body style={{ background: '#080808', minHeight: '100vh' }}>
+        <ServiceWorkerRegister />
         <Providers>{children}</Providers>
       </body>
     </html>

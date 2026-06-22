@@ -4,7 +4,7 @@ import Header from '@/components/Header'
 import { PerfumeDetail } from '@/components/PerfumeDetail'
 import { Perfume } from '@/types/perfume'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 300  // 5 min en servidor
 
 async function fetchPerfume(id: string): Promise<Perfume | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL

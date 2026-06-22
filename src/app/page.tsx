@@ -4,7 +4,7 @@ import { mockPerfumes } from '@/lib/mock-data'
 import { createClient } from '@supabase/supabase-js'
 import { Perfume } from '@/types/perfume'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60  // revalidar cada 60 s en servidor
 
 async function fetchPerfumes(): Promise<Perfume[]> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
