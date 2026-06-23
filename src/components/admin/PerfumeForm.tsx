@@ -111,6 +111,12 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const [aiRetryIn, setAiRetryIn] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (aiRetryIn === null || aiRetryIn <= 0) return
+    const id = setInterval(() => setAiRetryIn(s => (s !== null && s > 1 ? s - 1 : null)), 1000)
+    return () => clearInterval(id)
+  }, [aiRetryIn === null || aiRetryIn <= 0])
   const [error, setError]     = useState<string | null>(null)
 
   function set<K extends keyof PerfumeFormData>(key: K, value: PerfumeFormData[K]) {
