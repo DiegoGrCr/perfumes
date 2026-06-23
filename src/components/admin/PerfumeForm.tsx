@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect, useRef, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Save, Loader2, ArrowLeft, Sparkles, Clock } from 'lucide-react'
 import { Perfume, PerfumeImage, Category, Gender, Concentration } from '@/types/perfume'
@@ -108,9 +108,11 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
   const [newImages, setNewImages]           = useState<NewImageFile[]>([])
   const [imagesToDelete, setImagesToDelete] = useState<PerfumeImage[]>([])
   const [saving, setSaving]   = useState(false)
-  const [aiLoading, setAiLoading] = useState(false)
-  const [aiError, setAiError] = useState<string | null>(null)
-  const [aiRetryIn, setAiRetryIn] = useState<number | null>(null)
+  const [aiLoading, setAiLoading]     = useState(false)
+  const [aiError, setAiError]         = useState<string | null>(null)
+  const [aiRetryIn, setAiRetryIn]     = useState<number | null>(null)
+  const [aiQuotaOut, setAiQuotaOut]   = useState(false)
+  const aiRateMissesRef               = useRef(0)
 
   useEffect(() => {
     if (aiRetryIn === null || aiRetryIn <= 0) return
@@ -136,9 +138,15 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
       })
       const data = await res.json()
       if (res.status === 429 || data.error === 'rate_limited') {
-        setAiRetryIn(data.retryAfter ?? 60)
+        aiRateMissesRef.current += 1
+        if (aiRateMissesRef.current >= 2) {
+          setAiQuotaOut(true)  // dos 429 seguidos → cuota agotada por hoy
+        } else {
+          setAiRetryIn(data.retryAfter ?? 60)
+        }
         return
       }
+      aiRateMissesRef.current = 0  // éxito → reinicia contador
       if (!res.ok) throw new Error(data.error ?? JSON.stringify(data))
 
       const VALID_CONC = ['Parfum','EDP','EDT','EDC','Body Mist','Body Spray'] as const
@@ -289,23 +297,29 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
           <button
             type="button"
             onClick={fillWithAI}
-            disabled={!form.name || aiLoading || aiRetryIn !== null}
+            disabled={!form.name || aiLoading || aiRetryIn !== null || aiQuotaOut}
             className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] tracking-widest uppercase font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ background: '#1a1a00', border: '1px solid #C9A84C', color: '#C9A84C' }}
-            title={aiRetryIn !== null ? `Espera ${aiRetryIn}s` : !form.name ? 'Escribe el nombre primero' : 'Autocompletar con Gemini AI'}
+            title={aiQuotaOut ? 'Sin disponibilidad por ahora' : aiRetryIn !== null ? `Espera ${aiRetryIn}s` : !form.name ? 'Escribe el nombre primero' : 'Autocompletar con Gemini AI'}
           >
-            {aiLoading         ? <Loader2 size={12} className="animate-spin" /> :
-             aiRetryIn !== null ? <Clock size={12} /> :
+            {aiLoading          ? <Loader2 size={12} className="animate-spin" /> :
+             aiRetryIn !== null  ? <Clock size={12} /> :
              <Sparkles size={12} />}
-            {aiLoading         ? 'Generando…' :
-             aiRetryIn !== null ? `Espera ${aiRetryIn}s…` :
+            {aiLoading          ? 'Generando…' :
+             aiRetryIn !== null  ? `Espera ${aiRetryIn}s…` :
+             aiQuotaOut         ? 'No disponible ahora' :
              'Autocompletar con IA'}
           </button>
         </div>
 
         {aiRetryIn !== null && (
           <p className="text-[10px]" style={{ color: '#666' }}>
-            La API pide esperar un momento. El botón se reactiva solo al terminar la cuenta.
+            La API pide esperar un momento. El botón se reactiva solo.
+          </p>
+        )}
+        {aiQuotaOut && (
+          <p className="text-[10px]" style={{ color: '#666' }}>
+            La cuota de la API está agotada por ahora. Intenta de nuevo en unas horas.
           </p>
         )}
         {aiError && (
