@@ -310,7 +310,7 @@ export function PerfumeDetail({ perfume }: { perfume: Perfume }) {
 
             {/* CTA */}
             <a
-              href={`https://wa.me/527299427673?text=${encodeURIComponent(`¡Hola! Quisiera consultar la disponibilidad de: ${perfume.name} (${perfume.brand}) – ${perfume.volume_ml}ml`)}`}
+              href={`https://wa.me/527296769572?text=${encodeURIComponent(`¡Hola! Quisiera consultar la disponibilidad de: ${perfume.name} (${perfume.brand}) – ${perfume.volume_ml}ml`)}`}
               className="flex items-center justify-center gap-2 w-full py-4 rounded-full text-sm tracking-widest uppercase font-medium transition-opacity hover:opacity-85 mt-2"
               style={{ background: accent, color: '#fff' }}
             >

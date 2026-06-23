@@ -23,7 +23,7 @@ export default function Header() {
           {/* Acciones */}
           <div className="flex items-center gap-3">
             <a
-              href="https://wa.me/527299427673"
+              href="https://wa.me/527296769572"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-3 py-1.5 text-xs tracking-widest uppercase rounded-full transition-all duration-200"

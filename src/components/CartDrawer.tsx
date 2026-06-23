@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { X, Minus, Plus, Trash2, ShoppingBag, MessageCircle } from 'lucide-react'
 import { useCart, CartItem } from '@/context/CartContext'
 
-const WA = '527299427673'
+const WA = '527296769572'
 
 function buildMsg(items: CartItem[]): string {
   const lines = items.map(({ perfume, quantity, volume }) =>
