@@ -62,6 +62,15 @@ Responde SOLO con JSON válido (sin markdown):
   if (!res.ok) {
     const detail = await res.text()
     console.error('[gemini] status:', res.status, '| key prefix:', apiKey.slice(0, 6), '| detail:', detail)
+    if (res.status === 429) {
+      let retryAfter = 60
+      try {
+        const parsed = JSON.parse(detail)
+        const delayStr = parsed?.error?.details?.find((d: { retryDelay?: string }) => d.retryDelay)?.retryDelay
+        if (delayStr) retryAfter = Math.ceil(parseFloat(delayStr)) || 60
+      } catch {}
+      return NextResponse.json({ error: 'rate_limited', retryAfter }, { status: 429 })
+    }
     return NextResponse.json({ error: `Gemini ${res.status}: ${detail}` }, { status: 500 })
   }
 

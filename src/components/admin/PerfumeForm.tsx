@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { Save, Loader2, ArrowLeft, Sparkles } from 'lucide-react'
+import { Save, Loader2, ArrowLeft, Sparkles, Clock } from 'lucide-react'
 import { Perfume, PerfumeImage, Category, Gender, Concentration } from '@/types/perfume'
 import { createPerfume, updatePerfume, PerfumeFormData } from '@/lib/admin-api'
 import { savePerfumeImages, deletePerfumeImageRecord, setPrimaryImage } from '@/lib/storage'
@@ -110,6 +110,7 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
   const [saving, setSaving]   = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [aiRetryIn, setAiRetryIn] = useState<number | null>(null)
   const [error, setError]     = useState<string | null>(null)
 
   function set<K extends keyof PerfumeFormData>(key: K, value: PerfumeFormData[K]) {
@@ -120,6 +121,7 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
     if (!form.name) return
     setAiLoading(true)
     setAiError(null)
+    setAiRetryIn(null)
     try {
       const res = await fetch('/api/ai/perfume-info', {
         method: 'POST',
@@ -127,6 +129,10 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
         body: JSON.stringify({ name: form.name, brand: form.brand }),
       })
       const data = await res.json()
+      if (res.status === 429 || data.error === 'rate_limited') {
+        setAiRetryIn(data.retryAfter ?? 60)
+        return
+      }
       if (!res.ok) throw new Error(data.error ?? JSON.stringify(data))
 
       const VALID_CONC = ['Parfum','EDP','EDT','EDC','Body Mist','Body Spray'] as const
@@ -287,6 +293,15 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
           </button>
         </div>
 
+        {aiRetryIn !== null && (
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded text-xs" style={{ background: '#1a1500', border: '1px solid #3a2e00', color: '#C9A84C' }}>
+            <Clock size={13} className="mt-0.5 shrink-0" />
+            <span>
+              Límite de consultas IA alcanzado por hoy — es el plan gratuito de Gemini (20/día).
+              Vuelve a intentarlo en ~{aiRetryIn}s o mañana.
+            </span>
+          </div>
+        )}
         {aiError && (
           <div className="px-3 py-2 rounded text-xs" style={{ background: '#2a0a0a', border: '1px solid #5a1a1a', color: '#f87171' }}>
             {aiError}
