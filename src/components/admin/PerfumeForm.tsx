@@ -111,6 +111,7 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const [aiRetryIn, setAiRetryIn] = useState<number | null>(null)
+  const [aiDailyLimit, setAiDailyLimit] = useState(false)
 
   useEffect(() => {
     if (aiRetryIn === null || aiRetryIn <= 0) return
@@ -128,6 +129,7 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
     setAiLoading(true)
     setAiError(null)
     setAiRetryIn(null)
+    setAiDailyLimit(false)
     try {
       const res = await fetch('/api/ai/perfume-info', {
         method: 'POST',
@@ -136,7 +138,11 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
       })
       const data = await res.json()
       if (res.status === 429 || data.error === 'rate_limited') {
-        setAiRetryIn(data.retryAfter ?? 60)
+        if (data.daily) {
+          setAiDailyLimit(true)
+        } else {
+          setAiRetryIn(data.retryAfter ?? 60)
+        }
         return
       }
       if (!res.ok) throw new Error(data.error ?? JSON.stringify(data))
@@ -289,23 +295,29 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
           <button
             type="button"
             onClick={fillWithAI}
-            disabled={!form.name || aiLoading || aiRetryIn !== null}
+            disabled={!form.name || aiLoading || aiRetryIn !== null || aiDailyLimit}
             className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] tracking-widest uppercase font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ background: '#1a1a00', border: '1px solid #C9A84C', color: '#C9A84C' }}
-            title={!form.name ? 'Escribe el nombre primero' : aiRetryIn !== null ? `Espera ${aiRetryIn}s` : 'Autocompletar con Gemini AI'}
+            title={aiDailyLimit ? 'Límite diario agotado, vuelve mañana' : aiRetryIn !== null ? `Espera ${aiRetryIn}s` : !form.name ? 'Escribe el nombre primero' : 'Autocompletar con Gemini AI'}
           >
-            {aiLoading    ? <Loader2 size={12} className="animate-spin" /> :
+            {aiLoading        ? <Loader2 size={12} className="animate-spin" /> :
              aiRetryIn !== null ? <Clock size={12} /> :
              <Sparkles size={12} />}
-            {aiLoading    ? 'Generando…' :
+            {aiLoading        ? 'Generando…' :
              aiRetryIn !== null ? `Espera ${aiRetryIn}s…` :
+             aiDailyLimit    ? 'Sin intentos hoy' :
              'Autocompletar con IA'}
           </button>
         </div>
 
         {aiRetryIn !== null && (
           <p className="text-[10px]" style={{ color: '#666' }}>
-            Límite del plan gratuito de Gemini alcanzado. El botón se habilitará automáticamente al terminar la cuenta.
+            Demasiadas consultas seguidas. El botón se reactiva solo al terminar la cuenta.
+          </p>
+        )}
+        {aiDailyLimit && (
+          <p className="text-[10px]" style={{ color: '#666' }}>
+            Se agotaron los 20 intentos diarios del plan gratuito de Gemini. Vuelve mañana o activa facturación en Google AI Studio.
           </p>
         )}
         {aiError && (
