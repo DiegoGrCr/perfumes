@@ -289,24 +289,24 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
           <button
             type="button"
             onClick={fillWithAI}
-            disabled={!form.name || aiLoading}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] tracking-widest uppercase font-medium transition-all disabled:opacity-40"
+            disabled={!form.name || aiLoading || aiRetryIn !== null}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] tracking-widest uppercase font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ background: '#1a1a00', border: '1px solid #C9A84C', color: '#C9A84C' }}
-            title={!form.name ? 'Escribe el nombre primero' : 'Autocompletar con Gemini AI'}
+            title={!form.name ? 'Escribe el nombre primero' : aiRetryIn !== null ? `Espera ${aiRetryIn}s` : 'Autocompletar con Gemini AI'}
           >
-            {aiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-            {aiLoading ? 'Generando…' : 'Autocompletar con IA'}
+            {aiLoading    ? <Loader2 size={12} className="animate-spin" /> :
+             aiRetryIn !== null ? <Clock size={12} /> :
+             <Sparkles size={12} />}
+            {aiLoading    ? 'Generando…' :
+             aiRetryIn !== null ? `Espera ${aiRetryIn}s…` :
+             'Autocompletar con IA'}
           </button>
         </div>
 
         {aiRetryIn !== null && (
-          <div className="flex items-start gap-2 px-3 py-2.5 rounded text-xs" style={{ background: '#1a1500', border: '1px solid #3a2e00', color: '#C9A84C' }}>
-            <Clock size={13} className="mt-0.5 shrink-0" />
-            <span>
-              Límite de consultas IA alcanzado por hoy — es el plan gratuito de Gemini (20/día).
-              Vuelve a intentarlo en ~{aiRetryIn}s o mañana.
-            </span>
-          </div>
+          <p className="text-[10px]" style={{ color: '#666' }}>
+            Límite del plan gratuito de Gemini alcanzado. El botón se habilitará automáticamente al terminar la cuenta.
+          </p>
         )}
         {aiError && (
           <div className="px-3 py-2 rounded text-xs" style={{ background: '#2a0a0a', border: '1px solid #5a1a1a', color: '#f87171' }}>
