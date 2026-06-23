@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
-import { SlidersHorizontal, X, ArrowUpDown, Sparkles, Loader2 } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { SlidersHorizontal, X, ArrowUpDown, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Perfume, FilterState, SortOption } from '@/types/perfume'
 import PerfumeCard from './PerfumeCard'
 import FilterSidebar from './FilterSidebar'
@@ -27,13 +27,12 @@ const DEFAULT_FILTERS: FilterState = {
   sortBy: 'featured',
 }
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 23
 
 export default function CatalogClient({ perfumes }: Props) {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const sentinelRef = useRef<HTMLDivElement>(null)
+  const [page, setPage] = useState(1)
 
   const filtered = useMemo(() => {
     let list = [...perfumes]
@@ -81,23 +80,17 @@ export default function CatalogClient({ perfumes }: Props) {
     return list
   }, [perfumes, filters])
 
-  // Reiniciar al cambiar filtros
-  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [filters])
+  // Volver a página 1 cuando cambian los filtros
+  useEffect(() => { setPage(1) }, [filters])
 
-  // Infinite scroll: cargar más cuando el sentinel entra en pantalla
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-    const observer = new IntersectionObserver(
-      entries => { if (entries[0].isIntersecting) setVisibleCount(c => c + PAGE_SIZE) },
-      { rootMargin: '200px' }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [filtered.length])
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage   = Math.min(page, totalPages)
+  const pageItems  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
-  const visible = filtered.slice(0, visibleCount)
-  const hasMore = visibleCount < filtered.length
+  function goTo(p: number) {
+    setPage(p)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const activeFilterCount =
     filters.categories.length +
@@ -253,13 +246,44 @@ export default function CatalogClient({ perfumes }: Props) {
         {filtered.length > 0 ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-              {visible.map((p) => (
+              {pageItems.map((p) => (
                 <PerfumeCard key={p.id} perfume={p} />
               ))}
             </div>
-            {hasMore && (
-              <div ref={sentinelRef} className="flex justify-center py-10">
-                <Loader2 size={20} className="animate-spin" style={{ color: '#C9A84C' }} />
+
+            {/* Paginación */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-12 pb-4">
+                <button
+                  onClick={() => goTo(safePage - 1)}
+                  disabled={safePage === 1}
+                  className="w-9 h-9 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{ border: '1px solid #E5E5E5', color: '#888' }}
+                >
+                  <ChevronLeft size={15} />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+                  <button
+                    key={n}
+                    onClick={() => goTo(n)}
+                    className="w-9 h-9 rounded-full text-xs font-medium transition-all"
+                    style={n === safePage
+                      ? { background: '#C9A84C', color: '#fff', border: '1px solid #C9A84C' }
+                      : { border: '1px solid #E5E5E5', color: '#888' }}
+                  >
+                    {n}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => goTo(safePage + 1)}
+                  disabled={safePage === totalPages}
+                  className="w-9 h-9 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{ border: '1px solid #E5E5E5', color: '#888' }}
+                >
+                  <ChevronRight size={15} />
+                </button>
               </div>
             )}
           </>
