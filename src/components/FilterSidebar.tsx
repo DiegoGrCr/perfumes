@@ -17,35 +17,57 @@ const CATEGORY_ICONS: Record<Category, string> = {
   arabe: '☽', disenador: '◆', nicho: '◈', otros: '○',
 }
 
+const SCENT_TYPES: { value: string; label: string; emoji: string }[] = [
+  { value: 'Floral',     label: 'Floral',     emoji: '🌸' },
+  { value: 'Fresco',     label: 'Fresco',     emoji: '🍃' },
+  { value: 'Cítrico',    label: 'Cítrico',    emoji: '🍋' },
+  { value: 'Gourmand',   label: 'Dulce',      emoji: '🍯' },
+  { value: 'Amaderado',  label: 'Amaderado',  emoji: '🪵' },
+  { value: 'Oriental',   label: 'Oriental',   emoji: '☽' },
+  { value: 'Especiado',  label: 'Especiado',  emoji: '🌶️' },
+  { value: 'Marino',     label: 'Marino',     emoji: '🌊' },
+]
+
+const SEASONS: { value: string; label: string; emoji: string }[] = [
+  { value: 'Verano',    label: 'Calor',      emoji: '☀️' },
+  { value: 'Invierno',  label: 'Frío',       emoji: '❄️' },
+  { value: 'Primavera', label: 'Primavera',  emoji: '🌱' },
+  { value: 'Otoño',     label: 'Otoño',      emoji: '🍂' },
+]
+
 const DIVIDER = <div className="h-px" style={{ background: '#F0F0EE' }} />
 
 export default function FilterSidebar({ filters, onChange, totalCount, filteredCount }: Props) {
   const activeCount =
     filters.categories.length +
     filters.genders.length +
+    filters.scentTypes.length +
+    filters.seasons.length +
     (filters.inStockOnly ? 1 : 0) +
     (filters.search ? 1 : 0) +
     (filters.minPrice > 0 || filters.maxPrice < 5000 ? 1 : 0)
 
-  const toggleCategory = (cat: Category) => {
-    const next = filters.categories.includes(cat)
-      ? filters.categories.filter(c => c !== cat)
-      : [...filters.categories, cat]
-    onChange({ ...filters, categories: next })
-  }
+  const toggleCategory  = (cat: Category) => onChange({ ...filters, categories: filters.categories.includes(cat) ? filters.categories.filter(c => c !== cat) : [...filters.categories, cat] })
+  const toggleGender    = (g: Gender)     => onChange({ ...filters, genders:    filters.genders.includes(g)       ? filters.genders.filter(x => x !== g)           : [...filters.genders, g] })
+  const toggleScentType = (v: string)     => onChange({ ...filters, scentTypes: filters.scentTypes.includes(v)    ? filters.scentTypes.filter(x => x !== v)         : [...filters.scentTypes, v] })
+  const toggleSeason    = (v: string)     => onChange({ ...filters, seasons:    filters.seasons.includes(v)        ? filters.seasons.filter(x => x !== v)            : [...filters.seasons, v] })
 
-  const toggleGender = (g: Gender) => {
-    const next = filters.genders.includes(g)
-      ? filters.genders.filter(x => x !== g)
-      : [...filters.genders, g]
-    onChange({ ...filters, genders: next })
-  }
-
-  const clearAll = () =>
-    onChange({ categories: [], genders: [], minPrice: 0, maxPrice: 5000, search: '', inStockOnly: false, sortBy: filters.sortBy })
+  const clearAll = () => onChange({
+    categories: [], genders: [], scentTypes: [], seasons: [],
+    minPrice: 0, maxPrice: 5000, search: '', inStockOnly: false, sortBy: filters.sortBy,
+  })
 
   const label = (text: string) => (
     <span className="text-[10px] tracking-[0.35em] uppercase font-medium" style={{ color: '#aaa' }}>{text}</span>
+  )
+
+  const Checkbox = ({ active }: { active: boolean }) => (
+    <div className="w-3.5 h-3.5 rounded border-2 flex items-center justify-center transition-all"
+      style={{ background: active ? '#C9A84C' : 'transparent', borderColor: active ? '#C9A84C' : '#DDD' }}>
+      {active && <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+        <path d="M1 3l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>}
+    </div>
   )
 
   return (
@@ -103,6 +125,56 @@ export default function FilterSidebar({ filters, onChange, totalCount, filteredC
 
       {DIVIDER}
 
+      {/* Scent type */}
+      <div className="flex flex-col gap-2.5">
+        {label('Tipo de aroma')}
+        <div className="grid grid-cols-2 gap-1.5">
+          {SCENT_TYPES.map(({ value, label: lbl, emoji }) => {
+            const active = filters.scentTypes.includes(value)
+            return (
+              <button key={value} onClick={() => toggleScentType(value)}
+                className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-all"
+                style={{
+                  background: active ? '#FBF6EC' : '#F5F5F3',
+                  border: `1px solid ${active ? '#E8D9A8' : 'transparent'}`,
+                }}>
+                <span style={{ fontSize: 14 }}>{emoji}</span>
+                <span className="text-[10px] tracking-wider flex-1" style={{ color: active ? '#C9A84C' : '#888' }}>
+                  {lbl}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {DIVIDER}
+
+      {/* Season */}
+      <div className="flex flex-col gap-2.5">
+        {label('Temporada')}
+        <div className="grid grid-cols-2 gap-1.5">
+          {SEASONS.map(({ value, label: lbl, emoji }) => {
+            const active = filters.seasons.includes(value)
+            return (
+              <button key={value} onClick={() => toggleSeason(value)}
+                className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-all"
+                style={{
+                  background: active ? '#FBF6EC' : '#F5F5F3',
+                  border: `1px solid ${active ? '#E8D9A8' : 'transparent'}`,
+                }}>
+                <span style={{ fontSize: 14 }}>{emoji}</span>
+                <span className="text-[10px] tracking-wider flex-1" style={{ color: active ? '#C9A84C' : '#888' }}>
+                  {lbl}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {DIVIDER}
+
       {/* Categories */}
       <div className="flex flex-col gap-2.5">
         {label('Categoría')}
@@ -123,12 +195,7 @@ export default function FilterSidebar({ filters, onChange, totalCount, filteredC
                 <span className="text-xs tracking-wider flex-1" style={{ color: active ? '#C9A84C' : '#888' }}>
                   {CATEGORY_LABELS[cat]}
                 </span>
-                <div className="w-3.5 h-3.5 rounded border-2 flex items-center justify-center transition-all"
-                  style={{ background: active ? '#C9A84C' : 'transparent', borderColor: active ? '#C9A84C' : '#DDD' }}>
-                  {active && <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-                    <path d="M1 3l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>}
-                </div>
+                <Checkbox active={active} />
               </button>
             )
           })}

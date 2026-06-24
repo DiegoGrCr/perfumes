@@ -25,6 +25,8 @@ const DEFAULT_FILTERS: FilterState = {
   search: '',
   inStockOnly: false,
   sortBy: 'featured',
+  scentTypes: [],
+  seasons: [],
 }
 
 const PAGE_SIZE = 23
@@ -61,6 +63,14 @@ export default function CatalogClient({ perfumes }: Props) {
       list = list.filter((p) => p.in_stock)
     }
 
+    if (filters.scentTypes.length > 0) {
+      list = list.filter((p) => p.scent_type && filters.scentTypes.includes(p.scent_type))
+    }
+
+    if (filters.seasons.length > 0) {
+      list = list.filter((p) => p.seasons?.some(s => filters.seasons.includes(s)))
+    }
+
     switch (filters.sortBy) {
       case 'price_asc':
         list.sort((a, b) => a.price - b.price)
@@ -95,6 +105,8 @@ export default function CatalogClient({ perfumes }: Props) {
   const activeFilterCount =
     filters.categories.length +
     filters.genders.length +
+    filters.scentTypes.length +
+    filters.seasons.length +
     (filters.inStockOnly ? 1 : 0) +
     (filters.search ? 1 : 0) +
     (filters.minPrice > 0 || filters.maxPrice < 500 ? 1 : 0)

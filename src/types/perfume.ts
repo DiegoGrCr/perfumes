@@ -48,6 +48,8 @@ export interface FilterState {
   search: string
   inStockOnly: boolean
   sortBy: SortOption
+  scentTypes: string[]
+  seasons: string[]
 }
 
 export const CATEGORY_LABELS: Record<Category, string> = {
