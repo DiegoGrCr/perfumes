@@ -1,6 +1,6 @@
 'use client'
 import { useEffect } from 'react'
-import { X, Minus, Plus, Trash2, ShoppingBag, MessageCircle } from 'lucide-react'
+import { X, Minus, Plus, Trash2, ShoppingBag, MessageCircle, AlertCircle } from 'lucide-react'
 import { useCart, CartItem } from '@/context/CartContext'
 
 const WA = '527296769572'
@@ -19,7 +19,8 @@ function buildMsg(items: CartItem[]): string {
 
 export default function CartDrawer() {
   const { items, drawerOpen, closeDrawer, removeItem, updateQty, clearCart, totalItems } = useCart()
-  const total = items.reduce((s, i) => s + i.perfume.price * i.quantity, 0)
+  const total        = items.reduce((s, i) => s + i.perfume.price * i.quantity, 0)
+  const needsDeposit = items.some(i => i.perfume.price > 800)
 
   // Bloquea scroll del body mientras el drawer está abierto
   useEffect(() => {
@@ -153,6 +154,16 @@ export default function CartDrawer() {
                 ${total.toFixed(2)}
               </span>
             </div>
+
+            {needsDeposit && (
+              <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs"
+                style={{ background: '#FBF6EC', border: '1px solid #E8D9A8', color: '#8a6a1a' }}>
+                <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                <span>
+                  Se requiere <strong>50% de adelanto</strong> para pedidos con fragancias de más de $800.
+                </span>
+              </div>
+            )}
 
             <a
               href={`https://wa.me/${WA}?text=${buildMsg(items)}`}
