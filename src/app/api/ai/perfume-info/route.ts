@@ -10,8 +10,14 @@ async function callGemini(apiKey: string, body: string) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (isNewFormat) headers['x-goog-api-key'] = apiKey
 
-  const res = await fetch(url, { method: 'POST', headers, body })
-  return res
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 55_000)
+  try {
+    const res = await fetch(url, { method: 'POST', headers, body, signal: controller.signal })
+    return res
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -46,10 +52,20 @@ Responde SOLO con JSON válido (sin markdown):
     generationConfig: {
       responseMimeType: 'application/json',
       maxOutputTokens: 1024,
+      thinkingConfig: { thinkingBudget: 0 },
     },
   })
 
-  const res = await callGemini(apiKey, body)
+  let res: Response
+  try {
+    res = await callGemini(apiKey, body)
+  } catch (err) {
+    const isAbort = err instanceof Error && err.name === 'AbortError'
+    return NextResponse.json(
+      { error: isAbort ? 'La IA tardó demasiado. Intenta de nuevo.' : 'Error al contactar Gemini' },
+      { status: 500 }
+    )
+  }
 
   if (!res.ok) {
     const detail = await res.text()
