@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+export const maxDuration = 60  // permite hasta 60s de respuesta en Vercel
+
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
 async function callGemini(apiKey: string, body: string) {
-  // Nuevo formato de clave (AQ.) → x-goog-api-key header
-  // Formato clásico (AIzaSy) → query param ?key=
   const isNewFormat = !apiKey.startsWith('AIzaSy')
   const url = isNewFormat ? GEMINI_URL : `${GEMINI_URL}?key=${apiKey}`
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -31,37 +31,27 @@ export async function POST(req: NextRequest) {
   const CATEGORIES     = ['arabe','disenador','nicho','otros']
   const CONCENTRATIONS = ['Parfum','EDP','EDT','EDC','Body Mist','Body Spray']
 
-  const prompt = `Eres un experto en perfumería de alta gama. Analiza el perfume "${name}"${brand ? ` de ${brand}` : ''} y devuelve información REAL y ESPECÍFICA para ese perfume concreto, no valores genéricos.
+  // Prompt compacto para reducir tokens de pensamiento
+  const prompt = `Experto en perfumería. Perfume: "${name}"${brand ? ` de ${brand}` : ''}.
 
-IMPORTANTE para "concentration": lee con atención el nombre del perfume. Si el nombre contiene "EDT", "Eau de Toilette" o "Toilette" → usa "EDT". Si contiene "Body Mist" o "Mist" → usa "Body Mist". Si contiene "Body Spray" o "Spray" → usa "Body Spray". Si contiene "EDC" o "Cologne" → usa "EDC". Si contiene "Parfum" sin "Eau" o "Extrait" → usa "Parfum". En otro caso usa el que corresponda realmente a ese perfume.
+Concentration: si el nombre dice EDT/Toilette→EDT, Mist→Body Mist, Spray→Body Spray, EDC/Cologne→EDC, Parfum sin Eau→Parfum.
 
-Responde SOLO con JSON válido (sin markdown):
-{
-  "brand": "${brand || 'marca real del perfume (ej: Dior, Lattafa, Creed...), o vacío si no la conoces'}",
-  "gender": "para quién es ESTE perfume específicamente, elige uno de: ${GENDERS.join(', ')}",
-  "category": "categoría de ESTE perfume, elige uno de: ${CATEGORIES.join(', ')} (arabe=perfumería árabe/oriental, disenador=grandes marcas de moda, nicho=perfumería artesanal exclusiva, otros=resto)",
-  "concentration": "tipo de concentración de ESTE perfume, elige uno de: ${CONCENTRATIONS.join(', ')}",
-  "description": "descripción elegante y evocadora de 2-3 oraciones específica para este perfume",
-  "notes_top": ["notas de salida reales de este perfume"],
-  "notes_heart": ["notas de corazón reales de este perfume"],
-  "notes_base": ["notas de fondo reales de este perfume"],
-  "scent_type": "elige el más apropiado para ESTE perfume de: ${SCENT_TYPES.join(', ')}",
-  "longevity": "duración real conocida de ESTE perfume de: ${LONGEVITY.join(', ')}",
-  "sillage": "proyección real de ESTE perfume de: ${SILLAGE.join(', ')}",
-  "seasons": ["temporadas donde mejor encaja ESTE perfume de: ${SEASONS.join(', ')}"],
-  "occasions": ["ocasiones donde se usa ESTE perfume de: ${OCCASIONS.join(', ')}"]
-}`
+JSON válido sin markdown:
+{"brand":"${brand || 'marca real'}","gender":"${GENDERS.join('|')}","category":"${CATEGORIES.join('|')}","concentration":"${CONCENTRATIONS.join('|')}","description":"2-3 oraciones evocadoras","notes_top":["nota1","nota2","nota3"],"notes_heart":["nota1","nota2","nota3"],"notes_base":["nota1","nota2"],"scent_type":"${SCENT_TYPES.join('|')}","longevity":"${LONGEVITY.join('|')}","sillage":"${SILLAGE.join('|')}","seasons":["${SEASONS.join('|')}"],"occasions":["${OCCASIONS.join('|')}"]}`
 
   const body = JSON.stringify({
     contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { responseMimeType: 'application/json' },
+    generationConfig: {
+      responseMimeType: 'application/json',
+      maxOutputTokens: 1024,
+    },
   })
 
   const res = await callGemini(apiKey, body)
 
   if (!res.ok) {
     const detail = await res.text()
-    console.error('[gemini] status:', res.status, '| key prefix:', apiKey.slice(0, 6), '| detail:', detail)
+    console.error('[gemini] status:', res.status, '| detail:', detail)
     if (res.status === 429) {
       let retryAfter = 60
       try {
@@ -81,6 +71,13 @@ Responde SOLO con JSON válido (sin markdown):
     const parsed = JSON.parse(text)
     return NextResponse.json(parsed)
   } catch {
+    // Intentar extraer JSON del texto si viene envuelto en markdown
+    const match = text.match(/\{[\s\S]*\}/)
+    if (match) {
+      try {
+        return NextResponse.json(JSON.parse(match[0]))
+      } catch {}
+    }
     return NextResponse.json({ error: 'Respuesta inválida de Gemini', raw: text }, { status: 500 })
   }
 }
