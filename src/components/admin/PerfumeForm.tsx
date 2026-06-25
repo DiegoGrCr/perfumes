@@ -150,7 +150,7 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
 
       setForm(f => ({
         ...f,
-        brand:         (data.brand && data.brand.trim()) ? data.brand.trim() : f.brand,
+        brand:         f.brand.trim() ? f.brand : (data.brand?.trim() || f.brand),
         gender:        (['hombre','mujer','unisex'] as const).includes(data.gender) ? data.gender : f.gender,
         category:      (['arabe','disenador','nicho','otros'] as const).includes(data.category) ? data.category : f.category,
         concentration: concFromName ?? concFromAI ?? f.concentration,
