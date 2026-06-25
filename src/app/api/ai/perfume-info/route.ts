@@ -65,19 +65,27 @@ JSON válido sin markdown:
   }
 
   const geminiData = await res.json()
-  const text: string = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}'
 
-  try {
-    const parsed = JSON.parse(text)
-    return NextResponse.json(parsed)
-  } catch {
-    // Intentar extraer JSON del texto si viene envuelto en markdown
-    const match = text.match(/\{[\s\S]*\}/)
+  // Buscar en todas las partes (incluyendo posibles partes de "pensamiento")
+  // la que contenga JSON válido
+  const parts: { text?: string; thought?: boolean }[] =
+    geminiData.candidates?.[0]?.content?.parts ?? []
+
+  let parsed: Record<string, unknown> | null = null
+
+  for (const part of parts) {
+    if (!part.text || part.thought) continue
+    // Intento directo
+    try { parsed = JSON.parse(part.text); break } catch {}
+    // Intento extrayendo bloque JSON del texto (si viene con markdown)
+    const match = part.text.match(/\{[\s\S]*\}/)
     if (match) {
-      try {
-        return NextResponse.json(JSON.parse(match[0]))
-      } catch {}
+      try { parsed = JSON.parse(match[0]); break } catch {}
     }
-    return NextResponse.json({ error: 'Respuesta inválida de Gemini', raw: text }, { status: 500 })
   }
+
+  if (parsed) return NextResponse.json(parsed)
+
+  console.error('[gemini] no se pudo parsear. partes:', JSON.stringify(parts).slice(0, 500))
+  return NextResponse.json({ error: 'Respuesta inválida de Gemini' }, { status: 500 })
 }
