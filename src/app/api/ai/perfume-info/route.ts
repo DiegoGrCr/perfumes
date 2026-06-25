@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   const prompt = `Eres un experto en perfumería. Analiza el perfume: "${name}"${brand ? ` de ${brand}` : ''}.
 
 IMPORTANTE:
-- "brand": pon la marca fabricante real (ej: Dior, Chanel, Lattafa, Creed, Al Haramain, Grandeur Elite). OJO: el nombre de la fragancia o colección NO es la marca. Si no puedes identificar al fabricante, deja brand "".
+- "brand": SIEMPRE pon la casa/marca fabricante (ej: Dior, Chanel, Lattafa, Creed, Al Haramain, Grandeur Elite). La marca es el fabricante o casa perfumera, NO el nombre de la colección o línea. Si el perfume es poco conocido, usa tu mejor estimación de la casa que lo produce.
 - "concentration": EDT/Toilette→EDT, Mist→Body Mist, Spray→Body Spray, EDC/Cologne→EDC, Parfum sin Eau→Parfum.
 - Notas olfativas: reales y específicas de ESTE perfume, no genéricas.
 
