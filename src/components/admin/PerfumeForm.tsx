@@ -134,7 +134,25 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
       if (!res.ok) throw new Error(data.error ?? JSON.stringify(data))
 
       const VALID_CONC = ['Parfum','EDP','EDT','EDC','Body Mist','Body Spray'] as const
-      // Detectar concentración: primero del nombre, luego de la IA
+
+      function norm(s: string) {
+        return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
+      }
+      function normalizeCategory(val: string): Category | null {
+        const v = norm(String(val ?? ''))
+        if (v === 'arabe' || v.includes('arab')) return 'arabe'
+        if (v === 'disenador' || v.includes('disen') || v.includes('design') || v.includes('lujo')) return 'disenador'
+        if (v === 'nicho' || v.includes('nicho') || v.includes('niche')) return 'nicho'
+        if (v === 'otros') return 'otros'
+        return null
+      }
+      function matchList(raw: unknown, validOptions: string[]): string[] {
+        if (!Array.isArray(raw) || !raw.length) return []
+        return validOptions.filter(opt =>
+          raw.some((r: unknown) => norm(String(r)) === norm(opt))
+        )
+      }
+
       function guessConc(name: string): Concentration | null {
         const n = name.toUpperCase()
         if (/\bBODY MIST\b|\bMIST\b/.test(n)) return 'Body Mist'
@@ -148,11 +166,15 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
       const concFromName = guessConc(form.name)
       const concFromAI   = VALID_CONC.includes(data.concentration) ? data.concentration as Concentration : null
 
+      const aiCategory  = normalizeCategory(data.category)
+      const aiSeasons   = matchList(data.seasons,   SEASONS_OPTIONS)
+      const aiOccasions = matchList(data.occasions, OCCASIONS_OPTIONS)
+
       setForm(f => ({
         ...f,
         brand:         f.brand.trim() ? f.brand : (data.brand?.trim() || f.brand),
         gender:        (['hombre','mujer','unisex'] as const).includes(data.gender) ? data.gender : f.gender,
-        category:      (['arabe','disenador','nicho','otros'] as const).includes(data.category) ? data.category : f.category,
+        category:      aiCategory ?? f.category,
         concentration: concFromName ?? concFromAI ?? f.concentration,
         description:   data.description ?? f.description,
         notes_top:     Array.isArray(data.notes_top)   && data.notes_top.length   ? data.notes_top   : f.notes_top,
@@ -161,8 +183,8 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
         scent_type:    data.scent_type  || f.scent_type,
         longevity:     data.longevity   || f.longevity,
         sillage:       data.sillage     || f.sillage,
-        seasons:       Array.isArray(data.seasons)   && data.seasons.length   ? data.seasons   : f.seasons,
-        occasions:     Array.isArray(data.occasions) && data.occasions.length ? data.occasions : f.occasions,
+        seasons:       aiSeasons.length   ? aiSeasons   : f.seasons,
+        occasions:     aiOccasions.length ? aiOccasions : f.occasions,
       }))
     } catch (e) {
       setAiError(e instanceof Error ? e.message : 'Error desconocido')
