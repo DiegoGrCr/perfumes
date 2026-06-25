@@ -31,14 +31,14 @@ export async function POST(req: NextRequest) {
   const CATEGORIES     = ['arabe','disenador','nicho','otros']
   const CONCENTRATIONS = ['Parfum','EDP','EDT','EDC','Body Mist','Body Spray']
 
-  const prompt = `Eres un experto en perfumería. Analiza: "${name}"${brand ? ` de la marca ${brand}` : ''}.
+  const prompt = `Eres un experto en perfumería. Analiza el perfume: "${name}"${brand ? ` de ${brand}` : ''}.
 
-REGLAS ESTRICTAS:
-- "brand": solo pon la marca si la conoces con TOTAL certeza (ej: Dior, Chanel, Lattafa, Creed). Si el nombre de la fragancia suena a marca pero no estás seguro (ej: colecciones de nicho poco conocidas), deja brand vacío "". Es mejor dejarlo vacío que equivocarse.
-- "concentration": lee el nombre: EDT/Toilette→EDT, Mist→Body Mist, Spray→Body Spray, EDC/Cologne→EDC, Parfum sin Eau→Parfum, de lo contrario dedúcelo del perfume real.
-- Todas las notas deben ser reales y específicas de ESTE perfume, no genéricas.
+IMPORTANTE:
+- "brand": pon la marca fabricante real (ej: Dior, Chanel, Lattafa, Creed, Al Haramain, Grandeur Elite). OJO: el nombre de la fragancia o colección NO es la marca. Si no puedes identificar al fabricante, deja brand "".
+- "concentration": EDT/Toilette→EDT, Mist→Body Mist, Spray→Body Spray, EDC/Cologne→EDC, Parfum sin Eau→Parfum.
+- Notas olfativas: reales y específicas de ESTE perfume, no genéricas.
 
-Responde SOLO con este JSON válido (sin markdown):
+Responde SOLO con JSON válido (sin markdown):
 {"brand":"${brand || ''}","gender":"${GENDERS.join('|')}","category":"${CATEGORIES.join('|')}","concentration":"${CONCENTRATIONS.join('|')}","description":"2-3 oraciones evocadoras","notes_top":["nota1","nota2","nota3"],"notes_heart":["nota1","nota2","nota3"],"notes_base":["nota1","nota2"],"scent_type":"${SCENT_TYPES.join('|')}","longevity":"${LONGEVITY.join('|')}","sillage":"${SILLAGE.join('|')}","seasons":["season"],"occasions":["occasion"]}`
 
   const body = JSON.stringify({
