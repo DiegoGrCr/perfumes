@@ -1,10 +1,44 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Pencil, Trash2, Plus, Package, Star } from 'lucide-react'
+import { Pencil, Trash2, Plus, Package, Star, Download } from 'lucide-react'
 import { Perfume } from '@/types/perfume'
 import { CATEGORY_LABELS, GENDER_LABELS } from '@/types/perfume'
 import { deletePerfume } from '@/lib/admin-api'
+
+function exportCSV(perfumes: Perfume[]) {
+  const headers = [
+    'Nombre', 'Marca', 'Categoría', 'Género', 'Concentración',
+    'Volumen (ml)', 'Precio compra', 'Precio venta', 'Ganancia', 'Stock',
+  ]
+  const escape = (v: unknown) => {
+    const s = String(v ?? '')
+    return s.includes(',') || s.includes('"') || s.includes('\n')
+      ? `"${s.replace(/"/g, '""')}"`
+      : s
+  }
+  const rows = perfumes.map(p => [
+    p.name,
+    p.brand,
+    CATEGORY_LABELS[p.category],
+    GENDER_LABELS[p.gender],
+    p.concentration,
+    p.volume_ml,
+    p.original_price ?? '',
+    p.price,
+    p.original_price != null ? (p.price - p.original_price).toFixed(2) : '',
+    p.in_stock ? 'Sí' : 'No',
+  ].map(escape).join(','))
+
+  const csv = '﻿' + [headers.join(','), ...rows].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href = url
+  a.download = `velvet-catalogo-${new Date().toISOString().slice(0,10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 interface AdminPerfumeListProps {
   initialPerfumes: Perfume[]
@@ -34,14 +68,26 @@ export function AdminPerfumeList({ initialPerfumes }: AdminPerfumeListProps) {
           <h1 className="text-2xl font-light tracking-widest" style={{ color: '#F5F0E8' }}>Catálogo</h1>
           <p className="text-sm mt-1" style={{ color: '#666' }}>{perfumes.length} perfume{perfumes.length !== 1 ? 's' : ''}</p>
         </div>
-        <button
-          onClick={() => router.push('/admin/perfumes/new')}
-          className="flex items-center gap-2 px-5 py-2.5 rounded text-sm font-medium uppercase tracking-widest transition-opacity hover:opacity-80"
-          style={{ background: 'linear-gradient(135deg, #C9A84C, #E8C86D)', color: '#000' }}
-        >
-          <Plus size={16} />
-          Nuevo perfume
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => exportCSV(perfumes)}
+            disabled={perfumes.length === 0}
+            className="flex items-center gap-2 px-4 py-2.5 rounded text-sm font-medium uppercase tracking-widest transition-opacity hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{ background: '#1a1a1a', color: '#C9A84C', border: '1px solid #2a2a2a' }}
+            title="Exportar lista como CSV"
+          >
+            <Download size={15} />
+            Exportar
+          </button>
+          <button
+            onClick={() => router.push('/admin/perfumes/new')}
+            className="flex items-center gap-2 px-5 py-2.5 rounded text-sm font-medium uppercase tracking-widest transition-opacity hover:opacity-80"
+            style={{ background: 'linear-gradient(135deg, #C9A84C, #E8C86D)', color: '#000' }}
+          >
+            <Plus size={16} />
+            Nuevo perfume
+          </button>
+        </div>
       </div>
 
       {perfumes.length === 0 ? (
