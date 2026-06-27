@@ -21,6 +21,7 @@ const EMPTY: PerfumeFormData = {
   image_url: undefined, in_stock: true, featured: false,
   scent_type: undefined, seasons: [], occasions: [],
   longevity: undefined, sillage: undefined,
+  cost_price: undefined, stock_quantity: 0,
 }
 
 const SCENT_TYPES = ['Floral', 'Amaderado', 'Oriental', 'Fresco', 'Gourmand', 'Marino', 'Cítrico', 'Especiado', 'Herbal', 'Chypre', 'Fougère']
@@ -100,6 +101,8 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
           occasions:  initialData.occasions  ?? [],
           longevity:  initialData.longevity,
           sillage:    initialData.sillage,
+          cost_price:     initialData.cost_price,
+          stock_quantity: initialData.stock_quantity ?? 0,
         }
       : EMPTY
   )
@@ -379,23 +382,38 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <Field label="Precio *">
+          <Field label="Precio venta *">
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#C9A84C' }}>$</span>
               <input required type="number" min={0} step={0.01} className={`${selectClass} pl-7`} style={inputStyle}
                 value={form.price} onChange={e => set('price', parseFloat(e.target.value) || 0)} />
             </div>
           </Field>
-          <Field label="Precio original (opcional)">
+          <Field label="Precio original (descuento)">
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#C9A84C' }}>$</span>
               <input type="number" min={0} step={0.01} className={`${selectClass} pl-7`} style={inputStyle}
-                value={form.original_price ?? ''} onChange={e => set('original_price', e.target.value ? parseFloat(e.target.value) : undefined)} placeholder="Para mostrar descuento" />
+                value={form.original_price ?? ''} onChange={e => set('original_price', e.target.value ? parseFloat(e.target.value) : undefined)} placeholder="Para mostrar tachado" />
             </div>
           </Field>
           <Field label="Volumen (ml) *">
             <input required type="number" min={1} className={selectClass} style={inputStyle}
               value={form.volume_ml} onChange={e => set('volume_ml', parseInt(e.target.value) || 100)} />
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <Field label="Costo de compra (referencia)">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#555' }}>$</span>
+              <input type="number" min={0} step={0.01} className={`${selectClass} pl-7`} style={inputStyle}
+                value={form.cost_price ?? ''} onChange={e => set('cost_price', e.target.value ? parseFloat(e.target.value) : undefined)}
+                placeholder="Se auto-llena al registrar ventas" />
+            </div>
+          </Field>
+          <Field label="Unidades en inventario">
+            <input type="number" min={0} className={selectClass} style={inputStyle}
+              value={form.stock_quantity ?? 0} onChange={e => set('stock_quantity', parseInt(e.target.value) || 0)} />
           </Field>
         </div>
 

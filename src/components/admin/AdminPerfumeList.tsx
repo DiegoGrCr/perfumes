@@ -4,12 +4,12 @@ import { useRouter } from 'next/navigation'
 import { Pencil, Trash2, Plus, Package, Star, Download } from 'lucide-react'
 import { Perfume } from '@/types/perfume'
 import { CATEGORY_LABELS, GENDER_LABELS } from '@/types/perfume'
-import { deletePerfume } from '@/lib/admin-api'
+import { deletePerfume, updateStockQuantity } from '@/lib/admin-api'
 
 function exportCSV(perfumes: Perfume[]) {
   const headers = [
     'Nombre', 'Marca', 'Categoría', 'Género', 'Concentración',
-    'Volumen (ml)', 'Precio compra', 'Precio venta', 'Ganancia', 'Stock',
+    'Volumen (ml)', 'Costo referencia', 'Precio venta', 'Unidades en stock',
   ]
   const escape = (v: unknown) => {
     const s = String(v ?? '')
@@ -24,10 +24,9 @@ function exportCSV(perfumes: Perfume[]) {
     GENDER_LABELS[p.gender],
     p.concentration,
     p.volume_ml,
-    p.original_price ?? '',
+    p.cost_price ?? '',
     p.price,
-    p.original_price != null ? (p.price - p.original_price).toFixed(2) : '',
-    p.in_stock ? 'Sí' : 'No',
+    p.stock_quantity ?? 0,
   ].map(escape).join(','))
 
   const csv = '﻿' + [headers.join(','), ...rows].join('\n')
@@ -47,17 +46,31 @@ interface AdminPerfumeListProps {
 export function AdminPerfumeList({ initialPerfumes }: AdminPerfumeListProps) {
   const router = useRouter()
   const [perfumes, setPerfumes] = useState(initialPerfumes)
-  const [deleting, setDeleting] = useState<string | null>(null)
+  const [deleting, setDeleting]   = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [editStockId, setEditStockId]   = useState<string | null>(null)
+  const [editStockVal, setEditStockVal] = useState(0)
+  const [savingStock, setSavingStock]   = useState(false)
 
   async function handleDelete(id: string) {
     setDeleting(id)
     const ok = await deletePerfume(id)
-    if (ok) {
-      setPerfumes(p => p.filter(x => x.id !== id))
-    }
+    if (ok) setPerfumes(p => p.filter(x => x.id !== id))
     setDeleting(null)
     setConfirmId(null)
+  }
+
+  function startEditStock(p: Perfume) {
+    setEditStockId(p.id)
+    setEditStockVal(p.stock_quantity ?? 0)
+  }
+
+  async function saveStock(id: string) {
+    setSavingStock(true)
+    const ok = await updateStockQuantity(id, editStockVal)
+    if (ok) setPerfumes(ps => ps.map(p => p.id === id ? { ...p, stock_quantity: editStockVal } : p))
+    setSavingStock(false)
+    setEditStockId(null)
   }
 
   return (
@@ -99,11 +112,11 @@ export function AdminPerfumeList({ initialPerfumes }: AdminPerfumeListProps) {
           </button>
         </div>
       ) : (
-        <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #1e1e1e' }}>
+        <div className="rounded-lg overflow-x-auto" style={{ border: '1px solid #1e1e1e' }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: '#0d0d0d', borderBottom: '1px solid #1e1e1e' }}>
-                {['Perfume', 'Categoría', 'Género', 'Precio', 'Stock', 'Destacado', ''].map(h => (
+                {['Perfume', 'Categoría', 'Precio venta', 'Inventario', 'Stock', 'Dest.', ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs uppercase tracking-widest font-medium" style={{ color: '#555' }}>{h}</th>
                 ))}
               </tr>
@@ -114,23 +127,18 @@ export function AdminPerfumeList({ initialPerfumes }: AdminPerfumeListProps) {
                 return (
                   <tr
                     key={p.id}
-                    style={{
-                      background: idx % 2 === 0 ? '#111' : '#0f0f0f',
-                      borderBottom: '1px solid #1a1a1a',
-                    }}
+                    style={{ background: idx % 2 === 0 ? '#111' : '#0f0f0f', borderBottom: '1px solid #1a1a1a' }}
                     className="hover:brightness-110 transition-all"
                   >
                     {/* Perfume */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div
-                          className="w-10 h-10 rounded overflow-hidden flex-shrink-0 flex items-center justify-center"
-                          style={{ background: '#1a1a1a', border: '1px solid #2a2a2a' }}
-                        >
+                        <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0 flex items-center justify-center"
+                          style={{ background: '#1a1a1a', border: '1px solid #2a2a2a' }}>
                           {primaryImg
-                            ? <img src={primaryImg.url} alt="" className="w-full h-full object-cover" />  // eslint-disable-line @next/next/no-img-element
-                            : <Package size={14} style={{ color: '#333' }} />
-                          }
+                            // eslint-disable-next-line @next/next/no-img-element
+                            ? <img src={primaryImg.url} alt="" className="w-full h-full object-cover" />
+                            : <Package size={14} style={{ color: '#333' }} />}
                         </div>
                         <div>
                           <p className="font-medium" style={{ color: '#F5F0E8' }}>{p.name}</p>
@@ -146,30 +154,54 @@ export function AdminPerfumeList({ initialPerfumes }: AdminPerfumeListProps) {
                       </span>
                     </td>
 
-                    {/* Género */}
-                    <td className="px-4 py-3 text-xs" style={{ color: '#aaa' }}>
-                      {GENDER_LABELS[p.gender]}
-                    </td>
-
-                    {/* Precio */}
+                    {/* Precio venta */}
                     <td className="px-4 py-3">
                       <span className="font-medium" style={{ color: '#F5F0E8' }}>${p.price}</span>
-                      {p.original_price && (
-                        <span className="text-xs ml-1 line-through" style={{ color: '#555' }}>${p.original_price}</span>
+                      {p.cost_price != null && (
+                        <p className="text-xs" style={{ color: '#555' }}>costo: ${p.cost_price}</p>
                       )}
                     </td>
 
-                    {/* Stock */}
+                    {/* Inventario (unidades) — editable inline */}
                     <td className="px-4 py-3">
-                      <span
-                        className="text-xs px-2 py-0.5 rounded"
+                      {editStockId === p.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number" min={0} autoFocus
+                            value={editStockVal}
+                            onChange={e => setEditStockVal(parseInt(e.target.value) || 0)}
+                            onKeyDown={e => { if (e.key === 'Enter') saveStock(p.id); if (e.key === 'Escape') setEditStockId(null) }}
+                            className="w-16 px-2 py-1 rounded text-xs text-center"
+                            style={{ background: '#0d0d0d', border: '1px solid #C9A84C', color: '#F5F0E8' }}
+                          />
+                          <button onClick={() => saveStock(p.id)} disabled={savingStock}
+                            className="text-xs px-2 py-1 rounded" style={{ background: '#1a2a1a', color: '#4CAF50', border: '1px solid #2a4a2a' }}>
+                            {savingStock ? '…' : '✓'}
+                          </button>
+                          <button onClick={() => setEditStockId(null)}
+                            className="text-xs px-2 py-1 rounded" style={{ background: '#1a1a1a', color: '#aaa', border: '1px solid #2a2a2a' }}>
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => startEditStock(p)}
+                          className="flex items-center gap-1.5 text-xs px-2 py-1 rounded transition-opacity hover:opacity-70"
+                          style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: (p.stock_quantity ?? 0) > 0 ? '#F5F0E8' : '#555' }}>
+                          {p.stock_quantity ?? 0} uds
+                          <Pencil size={10} style={{ color: '#444' }} />
+                        </button>
+                      )}
+                    </td>
+
+                    {/* Stock (disponible) */}
+                    <td className="px-4 py-3">
+                      <span className="text-xs px-2 py-0.5 rounded"
                         style={{
                           background: p.in_stock ? '#0a2010' : '#200a0a',
                           color: p.in_stock ? '#4CAF50' : '#f87171',
                           border: `1px solid ${p.in_stock ? '#1a4020' : '#4a1a1a'}`,
-                        }}
-                      >
-                        {p.in_stock ? 'En stock' : 'Sin stock'}
+                        }}>
+                        {p.in_stock ? 'Sí' : 'No'}
                       </span>
                     </td>
 
@@ -183,38 +215,25 @@ export function AdminPerfumeList({ initialPerfumes }: AdminPerfumeListProps) {
                       {confirmId === p.id ? (
                         <div className="flex items-center gap-2">
                           <span className="text-xs" style={{ color: '#aaa' }}>¿Eliminar?</span>
-                          <button
-                            onClick={() => handleDelete(p.id)}
-                            disabled={deleting === p.id}
-                            className="text-xs px-2 py-1 rounded transition-colors"
-                            style={{ background: '#4a1a1a', color: '#f87171', border: '1px solid #6a2a2a' }}
-                          >
+                          <button onClick={() => handleDelete(p.id)} disabled={deleting === p.id}
+                            className="text-xs px-2 py-1 rounded"
+                            style={{ background: '#4a1a1a', color: '#f87171', border: '1px solid #6a2a2a' }}>
                             {deleting === p.id ? '…' : 'Sí'}
                           </button>
-                          <button
-                            onClick={() => setConfirmId(null)}
+                          <button onClick={() => setConfirmId(null)}
                             className="text-xs px-2 py-1 rounded"
-                            style={{ background: '#1a1a1a', color: '#aaa', border: '1px solid #2a2a2a' }}
-                          >
+                            style={{ background: '#1a1a1a', color: '#aaa', border: '1px solid #2a2a2a' }}>
                             No
                           </button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => router.push(`/admin/perfumes/${p.id}/edit`)}
-                            className="p-2 rounded transition-colors hover:opacity-80"
-                            style={{ color: '#C9A84C' }}
-                            title="Editar"
-                          >
+                          <button onClick={() => router.push(`/admin/perfumes/${p.id}/edit`)}
+                            className="p-2 rounded hover:opacity-80" style={{ color: '#C9A84C' }} title="Editar">
                             <Pencil size={14} />
                           </button>
-                          <button
-                            onClick={() => setConfirmId(p.id)}
-                            className="p-2 rounded transition-colors hover:opacity-80"
-                            style={{ color: '#f87171' }}
-                            title="Eliminar"
-                          >
+                          <button onClick={() => setConfirmId(p.id)}
+                            className="p-2 rounded hover:opacity-80" style={{ color: '#f87171' }} title="Eliminar">
                             <Trash2 size={14} />
                           </button>
                         </div>

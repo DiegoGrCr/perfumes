@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { Perfume, PerfumeImage } from '@/types/perfume'
+import { Perfume, PerfumeImage, Sale } from '@/types/perfume'
 
 export type PerfumeFormData = Omit<Perfume, 'id' | 'created_at' | 'images'>
 
@@ -68,4 +68,54 @@ export async function getImagesByPerfume(perfumeId: string): Promise<PerfumeImag
 
   if (error) { console.error(error); return [] }
   return data ?? []
+}
+
+export async function updateStockQuantity(id: string, stock_quantity: number): Promise<boolean> {
+  if (!supabase) return false
+  const { error } = await supabase
+    .from('perfumes')
+    .update({ stock_quantity })
+    .eq('id', id)
+  if (error) { console.error(error); return false }
+  return true
+}
+
+export async function getAllSales(): Promise<Sale[]> {
+  if (!supabase) return []
+  const { data, error } = await supabase
+    .from('sales')
+    .select('*')
+    .order('sold_at', { ascending: false })
+  if (error) { console.error(error); return [] }
+  return data ?? []
+}
+
+export interface SalePayload {
+  perfume_id: string | null
+  perfume_name: string
+  perfume_brand: string
+  volume_ml: number
+  quantity: number
+  cost_price: number
+  sale_price: number
+  notes?: string
+  sold_at: string
+}
+
+export async function createSale(payload: SalePayload): Promise<Sale | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase
+    .from('sales')
+    .insert([payload])
+    .select()
+    .single()
+  if (error) { console.error(error); return null }
+  return data
+}
+
+export async function deleteSale(id: string): Promise<boolean> {
+  if (!supabase) return false
+  const { error } = await supabase.from('sales').delete().eq('id', id)
+  if (error) { console.error(error); return false }
+  return true
 }

@@ -38,6 +38,22 @@ export interface Perfume {
   occasions?: string[]
   longevity?: string
   sillage?: string
+  cost_price?: number
+  stock_quantity?: number
+}
+
+export interface Sale {
+  id: string
+  perfume_id: string | null
+  perfume_name: string
+  perfume_brand: string
+  volume_ml: number
+  quantity: number
+  cost_price: number
+  sale_price: number
+  notes?: string
+  sold_at: string
+  created_at: string
 }
 
 export interface FilterState {
