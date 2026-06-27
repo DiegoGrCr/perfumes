@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { SlidersHorizontal, X, ArrowUpDown, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
+import { SlidersHorizontal, X, ArrowUpDown, Sparkles, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { Perfume, FilterState, SortOption } from '@/types/perfume'
 import PerfumeCard from './PerfumeCard'
 import FilterSidebar from './FilterSidebar'
@@ -171,7 +171,7 @@ export default function CatalogClient({ perfumes }: Props) {
             {/* Mobile filter toggle */}
             <button
               onClick={() => setShowMobileFilters(true)}
-              className="lg:hidden flex items-center gap-2 px-4 py-2 rounded-full text-xs tracking-widest uppercase transition-all duration-200"
+              className="lg:hidden flex items-center gap-2 px-3 py-2 rounded-full text-xs tracking-widest uppercase transition-all duration-200"
               style={{
                 border: `1px solid ${activeFilterCount > 0 ? '#C9A84C' : '#E5E5E5'}`,
                 color: activeFilterCount > 0 ? '#C9A84C' : '#888',
@@ -203,6 +203,30 @@ export default function CatalogClient({ perfumes }: Props) {
                 ))}
               </select>
             </div>
+          </div>
+        </div>
+
+        {/* Mobile search bar — visible solo en móvil, fuera del drawer de filtros */}
+        <div className="lg:hidden mb-5">
+          <div className="relative">
+            <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: '#bbb' }} />
+            <input
+              type="text"
+              value={filters.search}
+              onChange={e => setFilters({ ...filters, search: e.target.value })}
+              placeholder="Buscar fragancia o marca…"
+              className="w-full pl-9 pr-9 py-2.5 rounded-full text-sm"
+              style={{ background: '#F5F5F3', border: '1px solid #E5E5E5', color: '#1a1a1a', outline: 'none' }}
+            />
+            {filters.search && (
+              <button
+                onClick={() => setFilters({ ...filters, search: '' })}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2"
+                style={{ color: '#bbb' }}
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
         </div>
 
