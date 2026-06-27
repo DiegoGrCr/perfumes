@@ -32,7 +32,7 @@ function InventorySummary({ perfumes }: { perfumes: Perfume[] }) {
         <div>
           <p className="text-[10px] uppercase tracking-widest" style={{ color: '#555' }}>Unidades en inventario</p>
           <p className="text-xl font-light" style={{ color: '#F5F0E8' }}>{totalUnits}</p>
-          <p className="text-[10px]" style={{ color: '#444' }}>{withData.length} productos con costo registrado</p>
+          <p className="text-[10px] hidden sm:block" style={{ color: '#444' }}>{withData.length} productos con costo registrado</p>
         </div>
       </div>
       <div className="rounded-lg px-5 py-4 flex items-center gap-4" style={card('#f87171')}>
@@ -40,7 +40,7 @@ function InventorySummary({ perfumes }: { perfumes: Perfume[] }) {
         <div>
           <p className="text-[10px] uppercase tracking-widest" style={{ color: '#555' }}>Inversión actual</p>
           <p className="text-xl font-light" style={{ color: '#F5F0E8' }}>${totalInvested.toFixed(2)}</p>
-          <p className="text-[10px]" style={{ color: '#444' }}>Costo × unidades en stock</p>
+          <p className="text-[10px] hidden sm:block" style={{ color: '#444' }}>Costo × unidades en stock</p>
         </div>
       </div>
       <div className="rounded-lg px-5 py-4 flex items-center gap-4" style={card('#4CAF50')}>
@@ -50,7 +50,7 @@ function InventorySummary({ perfumes }: { perfumes: Perfume[] }) {
           <p className="text-xl font-light" style={{ color: potentialProfit >= 0 ? '#4CAF50' : '#f87171' }}>
             ${potentialProfit.toFixed(2)}
           </p>
-          <p className="text-[10px]" style={{ color: '#444' }}>Si se vende todo al precio actual</p>
+          <p className="text-[10px] hidden sm:block" style={{ color: '#444' }}>Si se vende todo al precio actual</p>
         </div>
       </div>
     </div>
@@ -103,17 +103,19 @@ export default function DashboardPage() {
     <div className="min-h-screen" style={{ background: '#080808' }}>
       {/* Top bar */}
       <header style={{ background: '#0d0d0d', borderBottom: '1px solid #1e1e1e' }}>
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <ShoppingBag size={18} style={{ color: '#C9A84C' }} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <ShoppingBag size={16} style={{ color: '#C9A84C' }} />
             <span className="text-sm font-light tracking-[0.2em] uppercase" style={{ color: '#F5F0E8' }}>
               Velvet <span style={{ color: '#C9A84C' }}>Admin</span>
             </span>
           </div>
-          <div className="flex items-center gap-4">
-            {userEmail && <span className="text-xs" style={{ color: '#555' }}>{userEmail}</span>}
+          <div className="flex items-center gap-2">
+            {userEmail && (
+              <span className="hidden sm:block text-xs truncate max-w-[140px]" style={{ color: '#555' }}>{userEmail}</span>
+            )}
             <button onClick={() => router.push('/')}
-              className="text-xs px-3 py-1.5 rounded transition-colors hover:opacity-80"
+              className="hidden sm:block text-xs px-3 py-1.5 rounded transition-colors hover:opacity-80"
               style={{ color: '#C9A84C', border: '1px solid #2a2a2a' }}>
               Ver catálogo
             </button>
@@ -121,18 +123,18 @@ export default function DashboardPage() {
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded transition-colors hover:opacity-80"
               style={{ color: '#f87171', border: '1px solid #2a2a2a' }}>
               <LogOut size={12} />
-              Salir
+              <span className="hidden sm:inline">Salir</span>
             </button>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="max-w-7xl mx-auto px-6 flex gap-0">
+        {/* Tabs — scrollable en móvil */}
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 flex overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
           {TABS.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className="flex items-center gap-2 px-5 py-3 text-xs font-medium uppercase tracking-widest transition-all"
+              className="flex items-center gap-1.5 px-4 sm:px-5 py-3 text-xs font-medium uppercase tracking-widest transition-all whitespace-nowrap flex-shrink-0"
               style={{
                 color: tab === t.id ? '#C9A84C' : '#444',
                 borderBottom: tab === t.id ? '2px solid #C9A84C' : '2px solid transparent',
@@ -146,7 +148,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Contenido */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"

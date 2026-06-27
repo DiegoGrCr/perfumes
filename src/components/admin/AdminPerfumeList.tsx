@@ -76,29 +76,30 @@ export function AdminPerfumeList({ initialPerfumes }: AdminPerfumeListProps) {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-light tracking-widest" style={{ color: '#F5F0E8' }}>Catálogo</h1>
+          <h1 className="text-xl sm:text-2xl font-light tracking-widest" style={{ color: '#F5F0E8' }}>Catálogo</h1>
           <p className="text-sm mt-1" style={{ color: '#666' }}>{perfumes.length} perfume{perfumes.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => exportCSV(perfumes)}
             disabled={perfumes.length === 0}
-            className="flex items-center gap-2 px-4 py-2.5 rounded text-sm font-medium uppercase tracking-widest transition-opacity hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded text-xs sm:text-sm font-medium uppercase tracking-widest transition-opacity hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed"
             style={{ background: '#1a1a1a', color: '#C9A84C', border: '1px solid #2a2a2a' }}
             title="Exportar lista como CSV"
           >
-            <Download size={15} />
-            Exportar
+            <Download size={14} />
+            <span className="hidden sm:inline">Exportar</span>
           </button>
           <button
             onClick={() => router.push('/admin/perfumes/new')}
-            className="flex items-center gap-2 px-5 py-2.5 rounded text-sm font-medium uppercase tracking-widest transition-opacity hover:opacity-80"
+            className="flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded text-xs sm:text-sm font-medium uppercase tracking-widest transition-opacity hover:opacity-80"
             style={{ background: 'linear-gradient(135deg, #C9A84C, #E8C86D)', color: '#000' }}
           >
-            <Plus size={16} />
-            Nuevo perfume
+            <Plus size={15} />
+            <span className="hidden sm:inline">Nuevo perfume</span>
+            <span className="sm:hidden">Nuevo</span>
           </button>
         </div>
       </div>

@@ -164,7 +164,7 @@ export function SaleForm({ perfumes, onSaved }: Props) {
       </div>
 
       {/* Costo y precio de venta */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-medium mb-1.5 uppercase tracking-widest" style={{ color: '#C9A84C' }}>
             Costo unitario *
@@ -193,7 +193,7 @@ export function SaleForm({ perfumes, onSaved }: Props) {
 
       {/* Resumen de ganancia en tiempo real */}
       {cost > 0 && sale > 0 && (
-        <div className="flex items-center gap-6 px-4 py-3 rounded-lg"
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6 px-4 py-3 rounded-lg"
           style={{ background: profit >= 0 ? '#0a1a0a' : '#1a0a0a', border: `1px solid ${profit >= 0 ? '#1a3a1a' : '#3a1a1a'}` }}>
           <div>
             <p className="text-[10px] uppercase tracking-widest" style={{ color: '#555' }}>Ganancia x unidad</p>
