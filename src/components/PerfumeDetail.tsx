@@ -172,13 +172,6 @@ export function PerfumeDetail({ perfume }: { perfume: Perfume }) {
               )}
 
               {/* Badges overlay */}
-              {!perfume.in_stock && (
-                <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.75)' }}>
-                  <span className="text-xs tracking-widest uppercase px-4 py-2 rounded-full" style={{ background: '#fff', color: '#999', border: '1px solid #ddd' }}>
-                    Agotado
-                  </span>
-                </div>
-              )}
               {discount && (
                 <div className="absolute top-4 right-4">
                   <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background: '#FF4B4B', color: '#fff' }}>

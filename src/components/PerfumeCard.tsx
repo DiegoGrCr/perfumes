@@ -166,13 +166,6 @@ export default function PerfumeCard({ perfume }: Props) {
         )}
 
         {/* Badges sobre la imagen */}
-        {!perfume.in_stock && (
-          <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.7)' }}>
-            <span className="text-[10px] tracking-widest uppercase px-3 py-1.5 rounded-full font-medium" style={{ background: '#fff', color: '#999', border: '1px solid #ddd' }}>
-              Agotado
-            </span>
-          </div>
-        )}
         {perfume.featured && (
           <div className="absolute top-3 left-3">
             <span className="text-[9px] tracking-widest uppercase px-2.5 py-1 rounded-full font-semibold"
@@ -239,26 +232,15 @@ export default function PerfumeCard({ perfume }: Props) {
             )}
           </div>
 
-          {perfume.in_stock ? (
-            <button
-              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[10px] tracking-widest uppercase font-medium transition-all duration-200"
-              style={{ background: accent, color: '#fff' }}
-              onClick={handleAddToCart}
-              onMouseEnter={e => { e.currentTarget.style.opacity = '0.85' }}
-              onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
-            >
-              <ShoppingBag size={11} /> Pedir
-            </button>
-          ) : (
-            <a
-              href={`https://wa.me/527296769572?text=${encodeURIComponent(`¡Hola! Quisiera consultar la disponibilidad de: ${perfume.name} (${perfume.brand}) – ${perfume.volume_ml}ml`)}`}
-              onClick={e => e.stopPropagation()}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[10px] tracking-widest uppercase font-medium"
-              style={{ background: '#F0F0F0', color: '#bbb' }}
-            >
-              <Eye size={11} /> Ver
-            </a>
-          )}
+          <button
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[10px] tracking-widest uppercase font-medium transition-all duration-200"
+            style={{ background: accent, color: '#fff' }}
+            onClick={handleAddToCart}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '0.85' }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+          >
+            <ShoppingBag size={11} /> Pedir
+          </button>
         </div>
       </div>
     </div>

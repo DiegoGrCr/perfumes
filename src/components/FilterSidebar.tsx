@@ -263,19 +263,6 @@ export default function FilterSidebar({ filters, onChange, totalCount, filteredC
 
       {DIVIDER}
 
-      {/* In stock */}
-      <label className="flex items-center gap-3 cursor-pointer">
-        <div
-          className="relative w-9 h-5 rounded-full transition-all"
-          onClick={() => onChange({ ...filters, inStockOnly: !filters.inStockOnly })}
-          style={{ background: filters.inStockOnly ? '#C9A84C' : '#E5E5E5' }}
-        >
-          <div className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
-            style={{ background: '#fff', left: filters.inStockOnly ? '18px' : '2px', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-        </div>
-        <span className="text-xs tracking-wider" style={{ color: '#888' }}>Solo disponibles</span>
-      </label>
-
     </aside>
   )
 }

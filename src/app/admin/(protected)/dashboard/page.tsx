@@ -1,13 +1,61 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, ShoppingBag, LayoutList, PlusCircle, BarChart2 } from 'lucide-react'
+import { LogOut, ShoppingBag, LayoutList, PlusCircle, BarChart2, Boxes, TrendingUp, DollarSign } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { getAllPerfumesAdmin, getAllSales } from '@/lib/admin-api'
 import { Perfume, Sale } from '@/types/perfume'
 import { AdminPerfumeList } from '@/components/admin/AdminPerfumeList'
 import { SaleForm } from '@/components/admin/SaleForm'
 import { SalesHistory } from '@/components/admin/SalesHistory'
+
+function InventorySummary({ perfumes }: { perfumes: Perfume[] }) {
+  const withData = perfumes.filter(p => p.cost_price != null && (p.stock_quantity ?? 0) > 0)
+
+  const totalUnits    = perfumes.reduce((s, p) => s + (p.stock_quantity ?? 0), 0)
+  const totalInvested = withData.reduce((s, p) => s + p.cost_price! * p.stock_quantity!, 0)
+  const potentialRevenue = withData.reduce((s, p) => s + p.price * p.stock_quantity!, 0)
+  const potentialProfit  = potentialRevenue - totalInvested
+
+  if (totalUnits === 0 && withData.length === 0) return null
+
+  const card = (color: string) => ({
+    background: '#111',
+    border: '1px solid #1e1e1e',
+    borderLeft: `3px solid ${color}`,
+  })
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+      <div className="rounded-lg px-5 py-4 flex items-center gap-4" style={card('#C9A84C')}>
+        <Boxes size={20} style={{ color: '#C9A84C' }} />
+        <div>
+          <p className="text-[10px] uppercase tracking-widest" style={{ color: '#555' }}>Unidades en inventario</p>
+          <p className="text-xl font-light" style={{ color: '#F5F0E8' }}>{totalUnits}</p>
+          <p className="text-[10px]" style={{ color: '#444' }}>{withData.length} productos con costo registrado</p>
+        </div>
+      </div>
+      <div className="rounded-lg px-5 py-4 flex items-center gap-4" style={card('#f87171')}>
+        <DollarSign size={20} style={{ color: '#f87171' }} />
+        <div>
+          <p className="text-[10px] uppercase tracking-widest" style={{ color: '#555' }}>Inversión actual</p>
+          <p className="text-xl font-light" style={{ color: '#F5F0E8' }}>${totalInvested.toFixed(2)}</p>
+          <p className="text-[10px]" style={{ color: '#444' }}>Costo × unidades en stock</p>
+        </div>
+      </div>
+      <div className="rounded-lg px-5 py-4 flex items-center gap-4" style={card('#4CAF50')}>
+        <TrendingUp size={20} style={{ color: '#4CAF50' }} />
+        <div>
+          <p className="text-[10px] uppercase tracking-widest" style={{ color: '#555' }}>Ganancia potencial</p>
+          <p className="text-xl font-light" style={{ color: potentialProfit >= 0 ? '#4CAF50' : '#f87171' }}>
+            ${potentialProfit.toFixed(2)}
+          </p>
+          <p className="text-[10px]" style={{ color: '#444' }}>Si se vende todo al precio actual</p>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 type Tab = 'catalogo' | 'nueva-venta' | 'historial'
 
@@ -107,7 +155,10 @@ export default function DashboardPage() {
         ) : (
           <>
             {tab === 'catalogo' && (
-              <AdminPerfumeList initialPerfumes={perfumes} />
+              <>
+                <InventorySummary perfumes={perfumes} />
+                <AdminPerfumeList initialPerfumes={perfumes} />
+              </>
             )}
 
             {tab === 'nueva-venta' && (
