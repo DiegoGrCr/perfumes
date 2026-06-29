@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react'
 import { Search, CheckCircle } from 'lucide-react'
 import { Perfume } from '@/types/perfume'
-import { createSale, SalePayload } from '@/lib/admin-api'
+import { createSale, updateStockQuantity, SalePayload } from '@/lib/admin-api'
 
 interface Props {
   perfumes: Perfume[]
@@ -72,13 +72,20 @@ export function SaleForm({ perfumes, onSaved }: Props) {
     }
 
     const result = await createSale(payload)
-    setSaving(false)
 
     if (!result) {
+      setSaving(false)
       setError('Error al guardar. Verifica que el SQL de migración fue ejecutado en Supabase.')
       return
     }
 
+    // Descontar del inventario (sin bajar de 0)
+    if (selected.stock_quantity != null && selected.stock_quantity > 0) {
+      const newStock = Math.max(0, selected.stock_quantity - quantity)
+      await updateStockQuantity(selected.id, newStock)
+    }
+
+    setSaving(false)
     setSaved(true)
     onSaved()
   }
