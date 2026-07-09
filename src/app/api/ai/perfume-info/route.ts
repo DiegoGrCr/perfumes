@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export const maxDuration = 60  // permite hasta 60s de respuesta en Vercel
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 
 async function callGemini(apiKey: string, body: string) {
   const isNewFormat = !apiKey.startsWith('AIzaSy')
@@ -55,7 +55,6 @@ Responde SOLO con JSON válido (sin markdown, sin texto adicional):
     generationConfig: {
       responseMimeType: 'application/json',
       maxOutputTokens: 1024,
-      thinkingConfig: { thinkingBudget: 0 },
     },
   })
 
