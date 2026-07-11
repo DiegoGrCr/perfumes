@@ -1,10 +1,12 @@
 'use client'
-import { useState } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Pencil, Trash2, Plus, Package, Star, Download } from 'lucide-react'
+import { Pencil, Trash2, Plus, Package, Star, Download, Search, X } from 'lucide-react'
 import { Perfume } from '@/types/perfume'
 import { CATEGORY_LABELS, GENDER_LABELS } from '@/types/perfume'
 import { deletePerfume, updateStockQuantity } from '@/lib/admin-api'
+
+const PAGE_SIZE = 20
 
 function exportCSV(perfumes: Perfume[]) {
   const headers = [
@@ -14,19 +16,11 @@ function exportCSV(perfumes: Perfume[]) {
   const escape = (v: unknown) => {
     const s = String(v ?? '')
     return s.includes(',') || s.includes('"') || s.includes('\n')
-      ? `"${s.replace(/"/g, '""')}"`
-      : s
+      ? `"${s.replace(/"/g, '""')}"` : s
   }
   const rows = perfumes.map(p => [
-    p.name,
-    p.brand,
-    CATEGORY_LABELS[p.category],
-    GENDER_LABELS[p.gender],
-    p.concentration,
-    p.volume_ml,
-    p.cost_price ?? '',
-    p.price,
-    p.stock_quantity ?? 0,
+    p.name, p.brand, CATEGORY_LABELS[p.category], GENDER_LABELS[p.gender],
+    p.concentration, p.volume_ml, p.cost_price ?? '', p.price, p.stock_quantity ?? 0,
   ].map(escape).join(','))
 
   const csv = '﻿' + [headers.join(','), ...rows].join('\n')
@@ -45,12 +39,45 @@ interface AdminPerfumeListProps {
 
 export function AdminPerfumeList({ initialPerfumes }: AdminPerfumeListProps) {
   const router = useRouter()
-  const [perfumes, setPerfumes] = useState(initialPerfumes)
-  const [deleting, setDeleting]   = useState<string | null>(null)
-  const [confirmId, setConfirmId] = useState<string | null>(null)
-  const [editStockId, setEditStockId]   = useState<string | null>(null)
+  const [perfumes, setPerfumes]       = useState(initialPerfumes)
+  const [query, setQuery]             = useState('')
+  const [visible, setVisible]         = useState(PAGE_SIZE)
+  const [deleting, setDeleting]       = useState<string | null>(null)
+  const [confirmId, setConfirmId]     = useState<string | null>(null)
+  const [editStockId, setEditStockId] = useState<string | null>(null)
   const [editStockVal, setEditStockVal] = useState(0)
-  const [savingStock, setSavingStock]   = useState(false)
+  const [savingStock, setSavingStock] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  // Filtrado por búsqueda
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return perfumes
+    return perfumes.filter(p =>
+      p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q)
+    )
+  }, [perfumes, query])
+
+  // Resetear visible al cambiar la búsqueda
+  useEffect(() => { setVisible(PAGE_SIZE) }, [query])
+
+  const displayed = filtered.slice(0, visible)
+  const hasMore   = visible < filtered.length
+
+  // IntersectionObserver para cargar más al llegar al final
+  const loadMore = useCallback(() => {
+    setVisible(v => Math.min(v + PAGE_SIZE, filtered.length))
+  }, [filtered.length])
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) loadMore()
+    }, { threshold: 0.1 })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [loadMore])
 
   async function handleDelete(id: string) {
     setDeleting(id)
@@ -76,18 +103,20 @@ export function AdminPerfumeList({ initialPerfumes }: AdminPerfumeListProps) {
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-light tracking-widest" style={{ color: '#F5F0E8' }}>Catálogo</h1>
-          <p className="text-sm mt-1" style={{ color: '#666' }}>{perfumes.length} perfume{perfumes.length !== 1 ? 's' : ''}</p>
+          <p className="text-sm mt-0.5" style={{ color: '#666' }}>
+            {query ? `${filtered.length} de ${perfumes.length}` : perfumes.length} perfume{perfumes.length !== 1 ? 's' : ''}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => exportCSV(perfumes)}
+            onClick={() => exportCSV(filtered.length > 0 ? filtered : perfumes)}
             disabled={perfumes.length === 0}
             className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded text-xs sm:text-sm font-medium uppercase tracking-widest transition-opacity hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed"
             style={{ background: '#1a1a1a', color: '#C9A84C', border: '1px solid #2a2a2a' }}
-            title="Exportar lista como CSV"
+            title="Exportar como CSV"
           >
             <Download size={14} />
             <span className="hidden sm:inline">Exportar</span>
@@ -104,148 +133,185 @@ export function AdminPerfumeList({ initialPerfumes }: AdminPerfumeListProps) {
         </div>
       </div>
 
-      {perfumes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-3" style={{ color: '#444' }}>
-          <Package size={40} />
-          <p className="text-sm">No hay perfumes aún.</p>
-          <button onClick={() => router.push('/admin/perfumes/new')} className="text-sm underline" style={{ color: '#C9A84C' }}>
-            Agrega el primero
+      {/* Buscador */}
+      <div className="relative mb-5">
+        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: '#444' }} />
+        <input
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Buscar por nombre o marca…"
+          className="w-full pl-9 pr-9 py-2.5 rounded text-sm outline-none"
+          style={{ background: '#0d0d0d', border: '1px solid #2a2a2a', color: '#F5F0E8' }}
+        />
+        {query && (
+          <button onClick={() => setQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2"
+            style={{ color: '#444' }}>
+            <X size={14} />
           </button>
+        )}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3" style={{ color: '#444' }}>
+          <Package size={36} />
+          <p className="text-sm">{query ? `Sin resultados para "${query}"` : 'No hay perfumes aún.'}</p>
+          {query
+            ? <button onClick={() => setQuery('')} className="text-xs underline" style={{ color: '#C9A84C' }}>Limpiar búsqueda</button>
+            : <button onClick={() => router.push('/admin/perfumes/new')} className="text-xs underline" style={{ color: '#C9A84C' }}>Agrega el primero</button>
+          }
         </div>
       ) : (
-        <div className="rounded-lg overflow-x-auto" style={{ border: '1px solid #1e1e1e' }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ background: '#0d0d0d', borderBottom: '1px solid #1e1e1e' }}>
-                {['Perfume', 'Categoría', 'Precio venta', 'Inventario', 'Stock', 'Dest.', ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs uppercase tracking-widest font-medium" style={{ color: '#555' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {perfumes.map((p, idx) => {
-                const primaryImg = p.images?.find(i => i.is_primary) ?? p.images?.[0]
-                return (
-                  <tr
-                    key={p.id}
-                    style={{ background: idx % 2 === 0 ? '#111' : '#0f0f0f', borderBottom: '1px solid #1a1a1a' }}
-                    className="hover:brightness-110 transition-all"
-                  >
-                    {/* Perfume */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0 flex items-center justify-center"
-                          style={{ background: '#1a1a1a', border: '1px solid #2a2a2a' }}>
-                          {primaryImg
-                            // eslint-disable-next-line @next/next/no-img-element
-                            ? <img src={primaryImg.url} alt="" className="w-full h-full object-cover" />
-                            : <Package size={14} style={{ color: '#333' }} />}
+        <>
+          <div className="rounded-lg overflow-x-auto" style={{ border: '1px solid #1e1e1e' }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ background: '#0d0d0d', borderBottom: '1px solid #1e1e1e' }}>
+                  {['Perfume', 'Categoría', 'Precio venta', 'Inventario', 'Stock', 'Dest.', ''].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs uppercase tracking-widest font-medium" style={{ color: '#555' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {displayed.map((p, idx) => {
+                  const primaryImg = p.images?.find(i => i.is_primary) ?? p.images?.[0]
+                  return (
+                    <tr key={p.id}
+                      style={{ background: idx % 2 === 0 ? '#111' : '#0f0f0f', borderBottom: '1px solid #1a1a1a' }}
+                      className="hover:brightness-110 transition-all">
+
+                      {/* Perfume */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0 flex items-center justify-center"
+                            style={{ background: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+                            {primaryImg
+                              // eslint-disable-next-line @next/next/no-img-element
+                              ? <img src={primaryImg.url} alt="" className="w-full h-full object-cover" />
+                              : <Package size={14} style={{ color: '#333' }} />}
+                          </div>
+                          <div>
+                            <p className="font-medium" style={{ color: '#F5F0E8' }}>{p.name}</p>
+                            <p className="text-xs" style={{ color: '#666' }}>{p.brand} · {p.concentration} · {p.volume_ml}ml</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium" style={{ color: '#F5F0E8' }}>{p.name}</p>
-                          <p className="text-xs" style={{ color: '#666' }}>{p.brand} · {p.concentration} · {p.volume_ml}ml</p>
-                        </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Categoría */}
-                    <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#1a1a1a', color: '#C9A84C', border: '1px solid #2a2a2a' }}>
-                        {CATEGORY_LABELS[p.category]}
-                      </span>
-                    </td>
+                      {/* Categoría */}
+                      <td className="px-4 py-3">
+                        <span className="text-xs px-2 py-0.5 rounded"
+                          style={{ background: '#1a1a1a', color: '#C9A84C', border: '1px solid #2a2a2a' }}>
+                          {CATEGORY_LABELS[p.category]}
+                        </span>
+                      </td>
 
-                    {/* Precio venta */}
-                    <td className="px-4 py-3">
-                      <span className="font-medium" style={{ color: '#F5F0E8' }}>${p.price}</span>
-                      {p.cost_price != null && (
-                        <p className="text-xs" style={{ color: '#555' }}>costo: ${p.cost_price}</p>
-                      )}
-                    </td>
+                      {/* Precio */}
+                      <td className="px-4 py-3">
+                        <span className="font-medium" style={{ color: '#F5F0E8' }}>${p.price}</span>
+                        {p.cost_price != null && (
+                          <p className="text-xs" style={{ color: '#555' }}>costo: ${p.cost_price}</p>
+                        )}
+                      </td>
 
-                    {/* Inventario (unidades) — editable inline */}
-                    <td className="px-4 py-3">
-                      {editStockId === p.id ? (
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="number" min={0} autoFocus
-                            value={editStockVal}
-                            onChange={e => setEditStockVal(parseInt(e.target.value) || 0)}
-                            onKeyDown={e => { if (e.key === 'Enter') saveStock(p.id); if (e.key === 'Escape') setEditStockId(null) }}
-                            className="w-16 px-2 py-1 rounded text-xs text-center"
-                            style={{ background: '#0d0d0d', border: '1px solid #C9A84C', color: '#F5F0E8' }}
-                          />
-                          <button onClick={() => saveStock(p.id)} disabled={savingStock}
-                            className="text-xs px-2 py-1 rounded" style={{ background: '#1a2a1a', color: '#4CAF50', border: '1px solid #2a4a2a' }}>
-                            {savingStock ? '…' : '✓'}
+                      {/* Inventario editable */}
+                      <td className="px-4 py-3">
+                        {editStockId === p.id ? (
+                          <div className="flex items-center gap-1.5">
+                            <input type="number" min={0} autoFocus
+                              value={editStockVal}
+                              onChange={e => setEditStockVal(parseInt(e.target.value) || 0)}
+                              onKeyDown={e => { if (e.key === 'Enter') saveStock(p.id); if (e.key === 'Escape') setEditStockId(null) }}
+                              className="w-16 px-2 py-1 rounded text-xs text-center"
+                              style={{ background: '#0d0d0d', border: '1px solid #C9A84C', color: '#F5F0E8' }} />
+                            <button onClick={() => saveStock(p.id)} disabled={savingStock}
+                              className="text-xs px-2 py-1 rounded"
+                              style={{ background: '#1a2a1a', color: '#4CAF50', border: '1px solid #2a4a2a' }}>
+                              {savingStock ? '…' : '✓'}
+                            </button>
+                            <button onClick={() => setEditStockId(null)}
+                              className="text-xs px-2 py-1 rounded"
+                              style={{ background: '#1a1a1a', color: '#aaa', border: '1px solid #2a2a2a' }}>
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <button onClick={() => startEditStock(p)}
+                            className="flex items-center gap-1.5 text-xs px-2 py-1 rounded transition-opacity hover:opacity-70"
+                            style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: (p.stock_quantity ?? 0) > 0 ? '#F5F0E8' : '#555' }}>
+                            {p.stock_quantity ?? 0} uds
+                            <Pencil size={10} style={{ color: '#444' }} />
                           </button>
-                          <button onClick={() => setEditStockId(null)}
-                            className="text-xs px-2 py-1 rounded" style={{ background: '#1a1a1a', color: '#aaa', border: '1px solid #2a2a2a' }}>
-                            ✕
-                          </button>
-                        </div>
-                      ) : (
-                        <button onClick={() => startEditStock(p)}
-                          className="flex items-center gap-1.5 text-xs px-2 py-1 rounded transition-opacity hover:opacity-70"
-                          style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: (p.stock_quantity ?? 0) > 0 ? '#F5F0E8' : '#555' }}>
-                          {p.stock_quantity ?? 0} uds
-                          <Pencil size={10} style={{ color: '#444' }} />
-                        </button>
-                      )}
-                    </td>
+                        )}
+                      </td>
 
-                    {/* Stock (disponible) */}
-                    <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-0.5 rounded"
-                        style={{
-                          background: p.in_stock ? '#0a2010' : '#200a0a',
-                          color: p.in_stock ? '#4CAF50' : '#f87171',
-                          border: `1px solid ${p.in_stock ? '#1a4020' : '#4a1a1a'}`,
-                        }}>
-                        {p.in_stock ? 'Sí' : 'No'}
-                      </span>
-                    </td>
+                      {/* Stock disponible */}
+                      <td className="px-4 py-3">
+                        <span className="text-xs px-2 py-0.5 rounded"
+                          style={{
+                            background: p.in_stock ? '#0a2010' : '#200a0a',
+                            color: p.in_stock ? '#4CAF50' : '#f87171',
+                            border: `1px solid ${p.in_stock ? '#1a4020' : '#4a1a1a'}`,
+                          }}>
+                          {p.in_stock ? 'Sí' : 'No'}
+                        </span>
+                      </td>
 
-                    {/* Destacado */}
-                    <td className="px-4 py-3">
-                      {p.featured && <Star size={14} style={{ color: '#C9A84C' }} fill="#C9A84C" />}
-                    </td>
+                      {/* Destacado */}
+                      <td className="px-4 py-3">
+                        {p.featured && <Star size={14} style={{ color: '#C9A84C' }} fill="#C9A84C" />}
+                      </td>
 
-                    {/* Acciones */}
-                    <td className="px-4 py-3">
-                      {confirmId === p.id ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs" style={{ color: '#aaa' }}>¿Eliminar?</span>
-                          <button onClick={() => handleDelete(p.id)} disabled={deleting === p.id}
-                            className="text-xs px-2 py-1 rounded"
-                            style={{ background: '#4a1a1a', color: '#f87171', border: '1px solid #6a2a2a' }}>
-                            {deleting === p.id ? '…' : 'Sí'}
-                          </button>
-                          <button onClick={() => setConfirmId(null)}
-                            className="text-xs px-2 py-1 rounded"
-                            style={{ background: '#1a1a1a', color: '#aaa', border: '1px solid #2a2a2a' }}>
-                            No
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => router.push(`/admin/perfumes/${p.id}/edit`)}
-                            className="p-2 rounded hover:opacity-80" style={{ color: '#C9A84C' }} title="Editar">
-                            <Pencil size={14} />
-                          </button>
-                          <button onClick={() => setConfirmId(p.id)}
-                            className="p-2 rounded hover:opacity-80" style={{ color: '#f87171' }} title="Eliminar">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                      {/* Acciones */}
+                      <td className="px-4 py-3">
+                        {confirmId === p.id ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs" style={{ color: '#aaa' }}>¿Eliminar?</span>
+                            <button onClick={() => handleDelete(p.id)} disabled={deleting === p.id}
+                              className="text-xs px-2 py-1 rounded"
+                              style={{ background: '#4a1a1a', color: '#f87171', border: '1px solid #6a2a2a' }}>
+                              {deleting === p.id ? '…' : 'Sí'}
+                            </button>
+                            <button onClick={() => setConfirmId(null)}
+                              className="text-xs px-2 py-1 rounded"
+                              style={{ background: '#1a1a1a', color: '#aaa', border: '1px solid #2a2a2a' }}>
+                              No
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => router.push(`/admin/perfumes/${p.id}/edit`)}
+                              className="p-2 rounded hover:opacity-80" style={{ color: '#C9A84C' }} title="Editar">
+                              <Pencil size={14} />
+                            </button>
+                            <button onClick={() => setConfirmId(p.id)}
+                              className="p-2 rounded hover:opacity-80" style={{ color: '#f87171' }} title="Eliminar">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Sentinel para infinite scroll */}
+          {hasMore && (
+            <div ref={sentinelRef} className="flex justify-center py-6">
+              <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
+                style={{ borderColor: '#2a2a2a', borderTopColor: '#C9A84C' }} />
+            </div>
+          )}
+
+          {!hasMore && filtered.length > PAGE_SIZE && (
+            <p className="text-center text-xs py-4" style={{ color: '#333' }}>
+              — {filtered.length} perfumes —
+            </p>
+          )}
+        </>
       )}
     </div>
   )
