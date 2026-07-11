@@ -34,21 +34,21 @@ export async function POST(req: NextRequest) {
   const SEASONS        = ['Primavera','Verano','Otoño','Invierno']
   const OCCASIONS      = ['Día','Noche','Trabajo','Romántico','Casual','Sport','Ocasión especial']
   const GENDERS        = ['hombre','mujer','unisex']
-  const CATEGORIES     = ['arabe','disenador','nicho','otros']
+  const CATEGORIES     = ['arabe','disenador','otros']
   const CONCENTRATIONS = ['Parfum','EDP','EDT','EDC','Body Mist','Body Spray']
 
   const prompt = `Eres un experto en perfumería. Analiza el perfume: "${name}"${brand ? ` de ${brand}` : ''}.
 
 REGLAS (sigue estrictamente):
 - "brand": SIEMPRE pon la casa/marca fabricante (ej: Dior, Chanel, Lattafa, Creed, Al Haramain, Grandeur Elite). Es el fabricante o casa perfumera, NO el nombre de la colección. Si es poco conocido, usa tu mejor estimación.
-- "category": elige UNO de estos valores exactos → arabe (perfumes árabes/orientales), disenador (marcas de diseñador o lujo), nicho (marcas de nicho o independientes), otros (el resto).
+- "category": elige UNO de estos valores exactos → arabe (perfumes árabes/orientales), disenador (marcas de diseñador o lujo), otros (el resto).
 - "concentration": EDT/Toilette→EDT, Mist→Body Mist, Spray→Body Spray, EDC/Cologne→EDC, Parfum sin Eau→Parfum.
 - "seasons": array con los que apliquen, usando EXACTAMENTE estos valores: ${SEASONS.join(', ')}.
 - "occasions": array con los que apliquen, usando EXACTAMENTE estos valores: ${OCCASIONS.join(', ')}.
 - Notas olfativas: reales y específicas de ESTE perfume, no genéricas.
 
 Responde SOLO con JSON válido (sin markdown, sin texto adicional):
-{"brand":"${brand || ''}","gender":"${GENDERS.join('|')}","category":"arabe|disenador|nicho|otros","concentration":"${CONCENTRATIONS.join('|')}","description":"2-3 oraciones evocadoras","notes_top":["nota1","nota2","nota3"],"notes_heart":["nota1","nota2","nota3"],"notes_base":["nota1","nota2"],"scent_type":"${SCENT_TYPES.join('|')}","longevity":"${LONGEVITY.join('|')}","sillage":"${SILLAGE.join('|')}","seasons":["Primavera|Verano|Otoño|Invierno"],"occasions":["Día|Noche|Trabajo|Romántico|Casual|Sport|Ocasión especial"]}`
+{"brand":"${brand || ''}","gender":"${GENDERS.join('|')}","category":"arabe|disenador|otros","concentration":"${CONCENTRATIONS.join('|')}","description":"2-3 oraciones evocadoras","notes_top":["nota1","nota2","nota3"],"notes_heart":["nota1","nota2","nota3"],"notes_base":["nota1","nota2"],"scent_type":"${SCENT_TYPES.join('|')}","longevity":"${LONGEVITY.join('|')}","sillage":"${SILLAGE.join('|')}","seasons":["Primavera|Verano|Otoño|Invierno"],"occasions":["Día|Noche|Trabajo|Romántico|Casual|Sport|Ocasión especial"]}`
 
   const body = JSON.stringify({
     contents: [{ parts: [{ text: prompt }] }],

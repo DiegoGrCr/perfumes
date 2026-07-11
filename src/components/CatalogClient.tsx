@@ -240,7 +240,7 @@ export default function CatalogClient({ perfumes }: Props) {
                 className="flex items-center gap-1.5 text-[10px] tracking-wider uppercase px-2.5 py-1 rounded-full transition-all duration-200"
                 style={{ background: '#FBF6EC', border: '1px solid #E8D9A8', color: '#C9A84C' }}
               >
-                {cat === 'arabe' ? 'Árabe' : cat === 'disenador' ? 'Diseñador' : cat === 'nicho' ? 'Nicho' : 'Otros'}
+                {cat === 'arabe' ? 'Árabe' : cat === 'disenador' ? 'Diseñador' : 'Otros'}
                 <X size={8} />
               </button>
             ))}

@@ -145,7 +145,7 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
         const v = norm(String(val ?? ''))
         if (v === 'arabe' || v.includes('arab')) return 'arabe'
         if (v === 'disenador' || v.includes('disen') || v.includes('design') || v.includes('lujo')) return 'disenador'
-        if (v === 'nicho' || v.includes('nicho') || v.includes('niche')) return 'nicho'
+
         if (v === 'otros') return 'otros'
         return null
       }
@@ -351,7 +351,7 @@ export function PerfumeForm({ initialData }: PerfumeFormProps) {
             <select required className={selectClass} style={selectStyle} value={form.category} onChange={e => set('category', e.target.value as Category)}>
               <option value="arabe">Árabe</option>
               <option value="disenador">Diseñador</option>
-              <option value="nicho">Nicho</option>
+
               <option value="otros">Otros</option>
             </select>
           </Field>

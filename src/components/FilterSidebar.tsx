@@ -10,7 +10,7 @@ interface Props {
   filteredCount: number
 }
 
-const CATEGORIES: Category[] = ['arabe', 'disenador', 'nicho', 'otros']
+const CATEGORIES: Category[] = ['arabe', 'disenador', 'otros']
 const GENDERS: Gender[]      = ['hombre', 'mujer', 'unisex']
 
 const CATEGORY_ICONS: Record<Category, string> = {
