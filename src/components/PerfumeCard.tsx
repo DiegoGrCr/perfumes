@@ -1,248 +1,166 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-
-import { useRouter } from 'next/navigation'
-import { ShoppingBag, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
-import { Perfume, CATEGORY_LABELS, GENDER_LABELS } from '@/types/perfume'
+import { useCallback, useRef, useState } from 'react'
+import Link from 'next/link'
+import { Plus, Check, Pin, Pencil, PackageCheck, Clock } from 'lucide-react'
+import { Perfume, GENDER_LABELS } from '@/types/perfume'
 import { useCart } from '@/context/CartContext'
+import { useAdmin, useLivePerfume } from '@/context/AdminContext'
+import { discountPct, formatPrice, orderedImages, stockLabel } from '@/lib/brand'
+import BottleSilhouette from '@/components/ui/BottleSilhouette'
 
-interface Props { perfume: Perfume }
+interface Props { perfume: Perfume; priority?: boolean; showSavings?: boolean }
 
-
-const CATEGORY_ACCENT: Record<string, string> = {
-  arabe:     '#C9A84C',
-  disenador: '#4A7EC9',
-  nicho:     '#8B6DD4',
-  otros:     '#4CAF7D',
-}
-
-const CATEGORY_BG: Record<string, string> = {
-  arabe:     '#FBF6EC',
-  disenador: '#EEF4FB',
-  nicho:     '#F4F0FB',
-  otros:     '#EEF7F2',
-}
-
-const GENDER_BG: Record<string, string> = {
-  hombre: '#EEF4FB',
-  mujer:  '#FBF0F5',
-  unisex: '#F7F5EC',
-}
-const GENDER_TEXT: Record<string, string> = {
-  hombre: '#4A7EC9',
-  mujer:  '#C94A7E',
-  unisex: '#8B7E3A',
-}
-
-function BottleIcon({ category }: { category: string }) {
-  const c = CATEGORY_ACCENT[category] ?? '#C9A84C'
-  return (
-    <svg viewBox="0 0 80 140" className="w-20 h-32 drop-shadow-sm" fill="none">
-      <rect x="28" y="4"  width="24" height="14" rx="4" fill={c} opacity="0.7" />
-      <rect x="24" y="18" width="32" height="6"  rx="3" fill={c} opacity="0.4" />
-      <rect x="32" y="24" width="16" height="18" rx="2" fill={c} opacity="0.3" />
-      <path d="M20 42 Q20 37 32 37 L48 37 Q60 37 60 42 L60 44 L20 44 Z" fill={c} opacity="0.25" />
-      <rect x="16" y="44" width="48" height="76" rx="8" fill={c} opacity="0.12" />
-      <rect x="20" y="50" width="8"  height="54" rx="4" fill="white" opacity="0.5" />
-      <rect x="22" y="60" width="36" height="40" rx="4" fill={c} opacity="0.1" />
-      <rect x="22" y="60" width="36" height="40" rx="4" stroke={c} strokeWidth="0.5" opacity="0.4" />
-      <rect x="28" y="70" width="24" height="1.5" rx="1" fill={c} opacity="0.5" />
-      <rect x="30" y="76" width="20" height="1"   rx="0.5" fill={c} opacity="0.3" />
-      <rect x="30" y="81" width="20" height="1"   rx="0.5" fill={c} opacity="0.3" />
-      <rect x="16" y="116" width="48" height="4"  rx="2" fill={c} opacity="0.15" />
-    </svg>
-  )
-}
-
-export default function PerfumeCard({ perfume }: Props) {
-  const router = useRouter()
+export default function PerfumeCard({ perfume: base, priority = false, showSavings = false }: Props) {
   const { addItem, flyToCart } = useCart()
-  const images = perfume.images ?? []
-  const hasImages = images.length > 0
-  const [imgIdx, setImgIdx] = useState(0)
-  const pausedRef = useRef(false)
+  const { isAdmin, save, openEditor } = useAdmin()
+  const perfume = useLivePerfume(base)
+  const images = orderedImages(perfume)
+  const primary = images[0]?.url ?? perfume.image_url
+  const secondary = images[1]?.url
   const imgRef = useRef<HTMLImageElement>(null)
+  const [added, setAdded] = useState(false)
 
-  const handleAddToCart = useCallback((e: React.MouseEvent) => {
+  const discount = discountPct(perfume)
+
+  const handleAdd = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
     e.stopPropagation()
     addItem(perfume, perfume.volume_ml)
-    const el = imgRef.current ?? (e.currentTarget as HTMLElement)
-    flyToCart(el, images[imgIdx]?.url)
-  }, [addItem, flyToCart, perfume, images, imgIdx])
+    flyToCart(imgRef.current ?? (e.currentTarget as HTMLElement), primary)
+    setAdded(true)
+    setTimeout(() => setAdded(false), 1600)
+  }, [addItem, flyToCart, perfume, primary])
 
-  useEffect(() => {
-    if (images.length <= 1) return
-    const id = setInterval(() => {
-      if (!pausedRef.current) setImgIdx(i => (i + 1) % images.length)
-    }, 3500)
-    return () => clearInterval(id)
-  }, [images.length])
-
-  const accent  = CATEGORY_ACCENT[perfume.category] ?? '#C9A84C'
-  const catBg   = CATEGORY_BG[perfume.category]     ?? '#FBF6EC'
-  const genBg   = GENDER_BG[perfume.gender]          ?? '#F0F0F0'
-  const genText = GENDER_TEXT[perfume.gender]        ?? '#666'
-
-  const discount = perfume.original_price
-    ? Math.round((1 - perfume.price / perfume.original_price) * 100)
-    : null
-
-  function prev(e: React.MouseEvent) {
-    e.stopPropagation()
-    setImgIdx(i => (i - 1 + images.length) % images.length)
-  }
-  function next(e: React.MouseEvent) {
-    e.stopPropagation()
-    setImgIdx(i => (i + 1) % images.length)
-  }
+  const href = `/perfume/${perfume.id}`
 
   return (
-    <div
-      className="group relative flex flex-col rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1"
-      style={{
-        background: '#fff',
-        border: '1px solid #EBEBEB',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        cursor: 'pointer',
-      }}
-      onClick={() => router.push(`/perfume/${perfume.id}`)}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; pausedRef.current = true }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)'; pausedRef.current = false }}
-    >
-      {/* ── Imagen / carrusel ────────────────────────── */}
-      <div className="relative overflow-hidden" style={{ height: '180px', background: catBg }}>
+    <article className="group relative flex flex-col">
+      {/* ── Image ─────────────────────────────────── */}
+      <div className="relative aspect-[4/5] overflow-hidden bg-sand">
+        <div
+          className="absolute inset-0 transition-opacity duration-700 group-hover:opacity-100 opacity-70"
+          style={{ background: 'radial-gradient(60% 50% at 50% 45%, rgba(255,255,255,0.85), transparent 70%)' }}
+        />
 
-        {hasImages ? (
+        {primary ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               ref={imgRef}
-              src={images[imgIdx].url}
+              src={primary}
               alt={perfume.name}
-              className="w-full h-full object-contain p-6 transition-transform duration-500 group-hover:scale-105"
+              loading={priority ? 'eager' : 'lazy'}
+              className={`absolute inset-0 h-full w-full object-contain p-[14%] drop-shadow-[0_18px_18px_rgba(23,18,15,0.18)] transition-all duration-[900ms] ease-lux group-hover:scale-[1.06] ${
+                secondary ? 'group-hover:opacity-0' : ''
+              }`}
             />
-
-            {/* Flechas (solo con > 1 imagen) */}
-            {images.length > 1 && (
-              <>
-                <button
-                  onClick={prev}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                  style={{ background: 'rgba(255,255,255,0.85)', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}
-                >
-                  <ChevronLeft size={14} style={{ color: '#333' }} />
-                </button>
-                <button
-                  onClick={next}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                  style={{ background: 'rgba(255,255,255,0.85)', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}
-                >
-                  <ChevronRight size={14} style={{ color: '#333' }} />
-                </button>
-
-                {/* Puntos indicadores */}
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                  {images.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={e => { e.stopPropagation(); setImgIdx(i) }}
-                      className="rounded-full transition-all duration-200"
-                      style={{
-                        width: i === imgIdx ? 16 : 6,
-                        height: 6,
-                        background: i === imgIdx ? accent : 'rgba(255,255,255,0.6)',
-                      }}
-                    />
-                  ))}
-                </div>
-              </>
+            {secondary && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={secondary}
+                alt=""
+                aria-hidden
+                loading="lazy"
+                className="absolute inset-0 h-full w-full scale-95 object-contain p-[14%] opacity-0 drop-shadow-[0_18px_18px_rgba(23,18,15,0.18)] transition-all duration-[900ms] ease-lux group-hover:scale-100 group-hover:opacity-100"
+              />
             )}
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center transition-transform duration-500 group-hover:scale-105">
-            <BottleIcon category={perfume.category} />
+          <div className="absolute inset-0 flex items-center justify-center transition-transform duration-[900ms] ease-lux group-hover:scale-105">
+            <BottleSilhouette className="h-1/2 w-auto" />
           </div>
         )}
 
-        {/* Badges sobre la imagen */}
-        {perfume.featured && (
-          <div className="absolute top-3 left-3">
-            <span className="text-[9px] tracking-widest uppercase px-2.5 py-1 rounded-full font-semibold"
-              style={{ background: accent, color: '#fff' }}>
+        {/* Badges */}
+        <div className="pointer-events-none absolute left-3 top-3 flex flex-col items-start gap-1.5 sm:left-4 sm:top-4">
+          {perfume.featured && (
+            <span className="eyebrow rounded-full bg-paper/90 px-2 py-1 text-[7px] tracking-[0.18em] text-ink backdrop-blur sm:px-2.5 sm:text-[8px] sm:tracking-[0.32em]">
               Destacado
             </span>
-          </div>
-        )}
+          )}
+        </div>
         {discount && (
-          <div className="absolute top-3 right-3">
-            <span className="text-[10px] font-bold px-2 py-1 rounded-full"
-              style={{ background: '#FF4B4B', color: '#fff' }}>
-              -{discount}%
-            </span>
+          <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-rose px-1.5 py-0.5 text-[9px] font-medium sm:px-2 sm:py-1 sm:text-[10px] text-paper sm:right-4 sm:top-4">
+            −{discount}%
+          </span>
+        )}
+
+        {/* Admin controls — sit above the stretched link */}
+        {isAdmin && (
+          <div className="absolute bottom-14 right-2.5 z-30 flex flex-col gap-1.5 sm:bottom-auto sm:right-3 sm:top-12 sm:opacity-80 sm:transition-opacity sm:group-hover:opacity-100">
+            {[
+              {
+                label: perfume.featured ? 'Quitar de arriba' : 'Fijar arriba',
+                icon: <Pin size={13} className={perfume.featured ? 'fill-current' : ''} />,
+                active: perfume.featured,
+                onClick: () => save(perfume, { featured: !perfume.featured }),
+              },
+              {
+                label: perfume.in_stock ? 'Marcar sobre pedido' : 'Marcar en existencia',
+                icon: perfume.in_stock ? <PackageCheck size={13} /> : <Clock size={13} />,
+                active: perfume.in_stock,
+                onClick: () => save(perfume, { in_stock: !perfume.in_stock }),
+              },
+              { label: 'Editar', icon: <Pencil size={13} />, active: false, onClick: () => openEditor(perfume) },
+            ].map(b => (
+              <button
+                key={b.label}
+                title={b.label}
+                aria-label={b.label}
+                onClick={e => { e.preventDefault(); e.stopPropagation(); b.onClick() }}
+                className={`flex h-8 w-8 items-center justify-center rounded-full shadow-md transition-all duration-300 hover:scale-110 ${
+                  b.active ? 'bg-ink text-ivory' : 'bg-paper text-ink'
+                }`}
+              >
+                {b.icon}
+              </button>
+            ))}
           </div>
         )}
+
+        {/* Quick add — desktop: slides up, mobile: round button */}
+        <button
+          onClick={handleAdd}
+          aria-label={`Agregar ${perfume.name} al pedido`}
+          className="absolute inset-x-3 bottom-3 z-20 hidden h-11 items-center justify-center gap-2 rounded-full bg-ink text-[10px] font-medium uppercase tracking-[0.22em] text-ivory opacity-0 translate-y-3 transition-all duration-500 ease-lux hover:bg-black group-hover:translate-y-0 group-hover:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100 sm:flex"
+        >
+          {added ? <><Check size={13} /> Agregado</> : <><Plus size={13} /> Agregar al pedido</>}
+        </button>
+        <button
+          onClick={handleAdd}
+          aria-label={`Agregar ${perfume.name} al pedido`}
+          className="absolute bottom-2.5 right-2.5 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-ink text-ivory shadow-lg transition-transform active:scale-90 sm:hidden"
+        >
+          {added ? <Check size={15} /> : <Plus size={15} />}
+        </button>
       </div>
 
-      {/* ── Info ─────────────────────────────────────── */}
-      <div className="flex flex-col gap-2 p-4 flex-1">
-        {/* Badges */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[9px] tracking-widest uppercase px-2 py-0.5 rounded-full font-medium"
-            style={{ background: catBg, color: accent }}>
-            {CATEGORY_LABELS[perfume.category]}
-          </span>
-          <span className="text-[9px] tracking-widest uppercase px-2 py-0.5 rounded-full font-medium"
-            style={{ background: genBg, color: genText }}>
-            {GENDER_LABELS[perfume.gender]}
-          </span>
-          <span className="text-[9px] tracking-widest uppercase px-2 py-0.5 rounded-full ml-auto"
-            style={{ background: '#F5F5F5', color: '#999' }}>
-            {perfume.concentration} · {perfume.volume_ml}ml
-          </span>
-        </div>
-
-        {/* Marca */}
-        <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: '#999' }}>
-          {perfume.brand}
-        </p>
-
-        {/* Nombre */}
-        <h3 className="text-sm font-medium leading-snug" style={{ color: '#1a1a1a' }}>
-          {perfume.name}
+      {/* ── Info ──────────────────────────────────── */}
+      <div className="flex flex-1 flex-col pt-4 sm:pt-5">
+        <p className="eyebrow text-[9px] text-muted">{perfume.brand}</p>
+        <h3 className="display mt-2 line-clamp-2 text-[1.3rem] leading-[1.1] sm:text-2xl">
+          <Link href={href} className="after:absolute after:inset-0 after:z-10 after:content-['']">
+            {perfume.name}
+          </Link>
         </h3>
-
-        {/* Notas */}
-        {perfume.notes_top && perfume.notes_top.length > 0 && (
-          <p className="text-[10px] leading-relaxed line-clamp-1" style={{ color: '#bbb' }}>
-            {perfume.notes_top.join(' · ')}
-          </p>
-        )}
-
-        {/* Precio + CTA */}
-        <div className="flex items-center justify-between mt-auto pt-3" style={{ borderTop: '1px solid #F0F0F0' }}>
-          <div>
-            <span className="text-lg font-semibold" style={{ color: accent }}>
-              ${perfume.price.toFixed(2)}
-            </span>
-            {perfume.original_price && (
-              <span className="text-xs line-through ml-1.5" style={{ color: '#ccc' }}>
-                ${perfume.original_price.toFixed(2)}
-              </span>
-            )}
-          </div>
-
-          <button
-            className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[10px] tracking-widest uppercase font-medium transition-all duration-200"
-            style={{ background: accent, color: '#fff' }}
-            onClick={handleAddToCart}
-            onMouseEnter={e => { e.currentTarget.style.opacity = '0.85' }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
-          >
-            <ShoppingBag size={11} /> Pedir
-          </button>
+        <p className="mt-2 text-[11px] tracking-wide text-faint">
+          {perfume.concentration} · {perfume.volume_ml} ml · {GENDER_LABELS[perfume.gender]}
+        </p>
+        <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1 pt-3">
+          <span className="text-[15px] font-medium text-ink">{formatPrice(perfume.price)}</span>
+          {discount && perfume.original_price && (
+            <span className="text-xs text-faint line-through">{formatPrice(perfume.original_price)}</span>
+          )}
         </div>
+        {showSavings && discount && perfume.original_price && (
+          <p className="mt-1 text-[11px] font-medium text-rose">Ahorras {formatPrice(perfume.original_price - perfume.price)}</p>
+        )}
+        <p className={`mt-1.5 flex items-center gap-1.5 text-[11px] ${perfume.in_stock ? 'text-ink-soft' : 'text-muted'}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${perfume.in_stock ? 'bg-emerald-600' : 'border border-faint'}`} />
+          {stockLabel(perfume)}
+        </p>
       </div>
-    </div>
+    </article>
   )
 }

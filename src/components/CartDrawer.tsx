@@ -1,19 +1,20 @@
 'use client'
 import { useEffect } from 'react'
-import { X, Minus, Plus, Trash2, ShoppingBag, MessageCircle, AlertCircle } from 'lucide-react'
+import Link from 'next/link'
+import { X, Minus, Plus, MessageCircle, Info } from 'lucide-react'
 import { useCart, CartItem } from '@/context/CartContext'
-
-const WA = '527296769572'
+import { formatPrice, primaryImage, stockLabel, waLink } from '@/lib/brand'
+import BottleSilhouette from '@/components/ui/BottleSilhouette'
 
 function buildMsg(items: CartItem[]): string {
   const lines = items.map(({ perfume, quantity, volume }) =>
-    `• ${perfume.name} (${perfume.brand}) – ${volume}ml × ${quantity}  $${(perfume.price * quantity).toFixed(2)}`
+    `• ${perfume.name} (${perfume.brand}) – ${volume}ml × ${quantity}  ${formatPrice(perfume.price * quantity)}${perfume.in_stock ? '' : ' (sobre pedido)'}`
   )
   const total = items.reduce((s, i) => s + i.perfume.price * i.quantity, 0)
-  return encodeURIComponent(
+  return (
     `¡Hola! Me gustaría realizar el siguiente pedido:\n\n` +
     lines.join('\n') +
-    `\n\nTotal estimado: $${total.toFixed(2)}\n\n¡Gracias! 🙏`
+    `\n\nTotal estimado: ${formatPrice(total)}\n\n¡Gracias! 🙏`
   )
 }
 
@@ -22,172 +23,157 @@ export default function CartDrawer() {
   const total        = items.reduce((s, i) => s + i.perfume.price * i.quantity, 0)
   const needsDeposit = items.some(i => i.perfume.price > 800)
 
-  // Bloquea scroll del body mientras el drawer está abierto
   useEffect(() => {
-    document.body.style.overflow = drawerOpen ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
+    if (!drawerOpen) return
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeDrawer() }
+    window.addEventListener('keydown', onKey)
+    return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey) }
+    // closeDrawer only flips state; re-subscribing on every render is unnecessary
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawerOpen])
 
   return (
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 z-40 transition-opacity duration-300"
-        style={{
-          background: 'rgba(0,0,0,0.45)',
-          opacity: drawerOpen ? 1 : 0,
-          pointerEvents: drawerOpen ? 'all' : 'none',
-        }}
+        className={`fixed inset-0 z-50 bg-velvet/45 backdrop-blur-[2px] transition-opacity duration-500 ${
+          drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
         onClick={closeDrawer}
       />
 
       {/* Panel */}
-      <div
-        className="fixed top-0 right-0 h-full z-50 flex flex-col"
-        style={{
-          width: 'min(420px, 100vw)',
-          background: '#fff',
-          boxShadow: '-4px 0 32px rgba(0,0,0,0.12)',
-          transform: drawerOpen ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
-        }}
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Tu pedido"
+        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-[440px] flex-col bg-paper transition-[transform,visibility] duration-700 ease-lux ${
+          drawerOpen ? 'translate-x-0 visible shadow-[-20px_0_60px_-20px_rgba(23,18,15,0.3)]' : 'translate-x-full invisible'
+        }`}
       >
-        {/* Cabecera */}
-        <div className="flex items-center justify-between px-6 py-4"
-          style={{ borderBottom: '1px solid #F0F0F0' }}>
-          <div className="flex items-center gap-2">
-            <ShoppingBag size={18} style={{ color: '#C9A84C' }} />
-            <span className="text-sm font-medium tracking-widest uppercase" style={{ color: '#1a1a1a' }}>
-              Mi pedido
-            </span>
-            {totalItems > 0 && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                style={{ background: '#C9A84C', color: '#fff' }}>
-                {totalItems}
-              </span>
-            )}
-          </div>
-          <button onClick={closeDrawer} style={{ color: '#aaa' }}>
-            <X size={20} />
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-line px-6 py-6 sm:px-8">
+          <h2 className="display text-3xl">
+            Tu pedido {totalItems > 0 && <sup className="ml-1 font-sans text-[11px] text-muted">{totalItems}</sup>}
+          </h2>
+          <button onClick={closeDrawer} className="-mr-2 p-2 text-muted transition-transform duration-500 hover:rotate-90 hover:text-ink" aria-label="Cerrar">
+            <X size={20} strokeWidth={1.5} />
           </button>
         </div>
 
-        {/* Lista de items */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        {/* Items */}
+        <div className="flex-1 overflow-y-auto px-6 sm:px-8">
           {items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3 py-20">
-              <ShoppingBag size={44} style={{ color: '#E8E8E8' }} />
-              <p className="text-sm" style={{ color: '#bbb' }}>Tu pedido está vacío</p>
-              <p className="text-[11px] text-center" style={{ color: '#ddd' }}>
-                Agrega fragancias desde el catálogo
-              </p>
+            <div className="flex h-full flex-col items-center justify-center gap-6 py-20 text-center">
+              <BottleSilhouette className="h-28 w-auto opacity-60" />
+              <div>
+                <p className="display text-3xl">Aún está vacío</p>
+                <p className="mt-2 text-sm text-muted">Tu próxima fragancia favorita te espera.</p>
+              </div>
+              <Link href="/#coleccion" onClick={closeDrawer} className="btn btn-ink">
+                Explorar colección
+              </Link>
             </div>
           ) : (
-            items.map(({ perfume, quantity, volume }) => (
-              <div key={`${perfume.id}-${volume}`}
-                className="flex gap-3 pb-4"
-                style={{ borderBottom: '1px solid #F8F8F8' }}>
+            <ul className="divide-y divide-line">
+              {items.map(({ perfume, quantity, volume }, i) => {
+                const img = primaryImage(perfume)
+                return (
+                  <li
+                    key={`${perfume.id}-${volume}`}
+                    className="flex gap-4 py-6 transition-all duration-700 ease-lux"
+                    style={{
+                      opacity: drawerOpen ? 1 : 0,
+                      transform: drawerOpen ? 'none' : 'translateX(24px)',
+                      transitionDelay: drawerOpen ? `${150 + i * 60}ms` : '0ms',
+                    }}
+                  >
+                    <Link
+                      href={`/perfume/${perfume.id}`}
+                      onClick={closeDrawer}
+                      className="flex h-28 w-24 shrink-0 items-center justify-center bg-sand"
+                    >
+                      {img
+                        // eslint-disable-next-line @next/next/no-img-element
+                        ? <img src={img} alt={perfume.name} className="h-full w-full object-contain p-2.5" />
+                        : <BottleSilhouette className="h-16 w-auto" />}
+                    </Link>
 
-                {/* Miniatura */}
-                <div className="w-16 h-16 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center"
-                  style={{ background: '#F8F4EE' }}>
-                  {perfume.images?.[0]?.url
-                    // eslint-disable-next-line @next/next/no-img-element
-                    ? <img src={perfume.images[0].url} alt={perfume.name}
-                        className="w-full h-full object-contain p-1" />
-                    : <ShoppingBag size={20} style={{ color: '#C9A84C', opacity: 0.35 }} />
-                  }
-                </div>
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <p className="eyebrow text-[8px] text-muted">{perfume.brand}</p>
+                      <p className="display mt-1 line-clamp-2 text-xl leading-tight">{perfume.name}</p>
+                      <p className="mt-1 text-[11px] text-faint">{volume} ml · {stockLabel(perfume)}</p>
 
-                {/* Info + controles */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-[9px] uppercase tracking-widest" style={{ color: '#ccc' }}>
-                    {perfume.brand}
-                  </p>
-                  <p className="text-sm font-medium leading-snug truncate" style={{ color: '#1a1a1a' }}>
-                    {perfume.name}
-                  </p>
-                  <p className="text-[10px]" style={{ color: '#ccc' }}>{volume} ml</p>
-
-                  <div className="flex items-center justify-between mt-2">
-                    {/* +/- cantidad */}
-                    <div className="flex items-center gap-2">
+                      <div className="mt-auto flex items-center justify-between pt-3">
+                        <div className="flex items-center rounded-full border border-line">
+                          <button
+                            onClick={() => updateQty(perfume.id, volume, quantity - 1)}
+                            className="flex h-8 w-8 items-center justify-center text-muted hover:text-ink"
+                            aria-label="Quitar uno"
+                          >
+                            <Minus size={12} />
+                          </button>
+                          <span className="w-5 text-center text-[13px]">{quantity}</span>
+                          <button
+                            onClick={() => updateQty(perfume.id, volume, quantity + 1)}
+                            className="flex h-8 w-8 items-center justify-center text-muted hover:text-ink"
+                            aria-label="Agregar uno"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+                        <span className="text-[14px] font-medium">{formatPrice(perfume.price * quantity)}</span>
+                      </div>
                       <button
-                        onClick={() => updateQty(perfume.id, volume, quantity - 1)}
-                        className="w-6 h-6 rounded-full flex items-center justify-center"
-                        style={{ background: '#F5F5F5' }}>
-                        <Minus size={10} style={{ color: '#666' }} />
-                      </button>
-                      <span className="text-sm w-4 text-center font-medium" style={{ color: '#1a1a1a' }}>
-                        {quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQty(perfume.id, volume, quantity + 1)}
-                        className="w-6 h-6 rounded-full flex items-center justify-center"
-                        style={{ background: '#F5F5F5' }}>
-                        <Plus size={10} style={{ color: '#666' }} />
+                        onClick={() => removeItem(perfume.id, volume)}
+                        className="link-underline mt-2 self-start text-[10px] uppercase tracking-[0.2em] text-faint hover:text-ink"
+                      >
+                        Eliminar
                       </button>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold" style={{ color: '#C9A84C' }}>
-                        ${(perfume.price * quantity).toFixed(2)}
-                      </span>
-                      <button onClick={() => removeItem(perfume.id, volume)}
-                        style={{ color: '#ddd' }}>
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
+                  </li>
+                )
+              })}
+            </ul>
           )}
         </div>
 
-        {/* Footer con total y WhatsApp */}
+        {/* Footer */}
         {items.length > 0 && (
-          <div className="px-6 py-5 space-y-3" style={{ borderTop: '1px solid #F0F0F0' }}>
-            <div className="flex items-center justify-between">
-              <span className="text-sm" style={{ color: '#999' }}>Total estimado</span>
-              <span className="text-xl font-semibold" style={{ color: '#1a1a1a' }}>
-                ${total.toFixed(2)}
-              </span>
+          <div className="space-y-4 border-t border-line bg-ivory px-6 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-8">
+            <div className="flex items-baseline justify-between">
+              <span className="eyebrow text-[9px] text-muted">Total estimado</span>
+              <span className="display text-4xl">{formatPrice(total)}</span>
             </div>
 
             {needsDeposit && (
-              <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs"
-                style={{ background: '#FBF6EC', border: '1px solid #E8D9A8', color: '#8a6a1a' }}>
-                <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                <span>
-                  Se requiere <strong>50% de adelanto</strong> para pedidos con fragancias de más de $800.
-                </span>
-              </div>
+              <p className="flex items-start gap-2.5 rounded-sm bg-rose-soft px-4 py-3 text-[12px] leading-relaxed text-ink-soft">
+                <Info size={14} className="mt-0.5 shrink-0 text-rose" />
+                <span>Las fragancias de más de {formatPrice(800)} requieren <strong className="font-medium">50% de anticipo</strong>.</span>
+              </p>
             )}
 
             <a
-              href={`https://wa.me/${WA}?text=${buildMsg(items)}`}
+              href={waLink(buildMsg(items))}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-full text-sm font-medium tracking-widest uppercase"
-              style={{ background: '#25D366', color: '#fff' }}
+              className="btn btn-ink w-full"
             >
-              <MessageCircle size={16} />
-              Enviar pedido por WhatsApp
+              <MessageCircle size={15} /> Enviar pedido por WhatsApp
             </a>
-
+            <p className="text-center text-[11px] text-faint">
+              Te confirmamos disponibilidad y entrega por mensaje.
+            </p>
             <button
               onClick={clearCart}
-              className="w-full text-center text-[10px] py-1 tracking-widest uppercase"
-              style={{ color: '#ddd' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#bbb' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#ddd' }}
+              className="link-underline mx-auto block text-[10px] uppercase tracking-[0.2em] text-faint hover:text-ink"
             >
               Vaciar pedido
             </button>
           </div>
         )}
-      </div>
+      </aside>
     </>
   )
 }

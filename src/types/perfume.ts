@@ -63,6 +63,7 @@ export interface FilterState {
   maxPrice: number
   search: string
   inStockOnly: boolean
+  onSaleOnly: boolean
   sortBy: SortOption
   scentTypes: string[]
   seasons: string[]

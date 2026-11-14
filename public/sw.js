@@ -1,4 +1,4 @@
-const CACHE = 'velvet-v1'
+const CACHE = 'velvet-v2'
 
 self.addEventListener('install', ev => {
   self.skipWaiting()

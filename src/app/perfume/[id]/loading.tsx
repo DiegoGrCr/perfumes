@@ -1,63 +1,38 @@
 import Header from '@/components/Header'
+import ScrollToTop from '@/components/ui/ScrollToTop'
 
 export default function Loading() {
   return (
     <>
+      <ScrollToTop />
       <Header />
-      <div style={{ background: '#F8F7F4', minHeight: '100vh' }}>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-pulse">
-
-          {/* Back button */}
-          <div className="h-4 w-20 rounded mb-8" style={{ background: '#EBEBEB' }} />
-
-          <div className="flex flex-col lg:flex-row gap-12">
-
-            {/* Image skeleton */}
-            <div className="w-full lg:w-96 shrink-0">
-              <div className="rounded-2xl" style={{ height: 420, background: '#F0F0F0' }} />
+      <main className="mx-auto max-w-7xl px-5 pb-24 pt-8 sm:px-8">
+        <div className="skeleton h-2.5 w-48 rounded-full" />
+        <div className="mt-8 grid gap-10 lg:grid-cols-12 lg:gap-16">
+          <div className="lg:col-span-7 flex gap-4">
+            <div className="hidden sm:flex flex-col gap-3">
+              {[0, 1].map(i => <div key={i} className="skeleton h-24 w-20" />)}
             </div>
-
-            {/* Content skeleton */}
-            <div className="flex-1 space-y-5">
-              {/* Badges */}
-              <div className="flex gap-2">
-                <div className="h-5 w-16 rounded-full" style={{ background: '#EBEBEB' }} />
-                <div className="h-5 w-14 rounded-full" style={{ background: '#EBEBEB' }} />
-                <div className="h-5 w-20 rounded-full" style={{ background: '#EBEBEB' }} />
-              </div>
-
-              {/* Brand */}
-              <div className="h-3 w-24 rounded" style={{ background: '#EBEBEB' }} />
-
-              {/* Name */}
-              <div className="h-8 w-64 rounded" style={{ background: '#EBEBEB' }} />
-
-              {/* Price */}
-              <div className="h-8 w-28 rounded" style={{ background: '#EBEBEB' }} />
-
-              {/* Description */}
-              <div className="space-y-2 pt-2">
-                <div className="h-4 w-full rounded" style={{ background: '#EBEBEB' }} />
-                <div className="h-4 w-full rounded" style={{ background: '#EBEBEB' }} />
-                <div className="h-4 w-3/4 rounded" style={{ background: '#EBEBEB' }} />
-              </div>
-
-              {/* Notes */}
-              <div className="space-y-3 pt-2">
-                <div className="h-3 w-24 rounded" style={{ background: '#EBEBEB' }} />
-                <div className="flex flex-wrap gap-2">
-                  {[60, 80, 70, 55, 75].map((w, i) => (
-                    <div key={i} className="h-7 rounded-full" style={{ width: w, background: '#EBEBEB' }} />
-                  ))}
-                </div>
-              </div>
-
-              {/* CTA button */}
-              <div className="h-12 w-56 rounded-full mt-4" style={{ background: '#EBEBEB' }} />
+            <div className="skeleton aspect-[4/5] flex-1" />
+          </div>
+          <div className="lg:col-span-5 lg:pt-6">
+            <div className="skeleton h-2.5 w-24 rounded-full" />
+            <div className="skeleton mt-6 h-14 w-full rounded" />
+            <div className="skeleton mt-3 h-14 w-2/3 rounded" />
+            <div className="skeleton mt-8 h-3 w-1/2 rounded-full" />
+            <div className="mt-8 border-y border-line py-6">
+              <div className="skeleton h-10 w-32 rounded" />
             </div>
+            <div className="mt-8 space-y-3">
+              <div className="skeleton h-3 w-full rounded-full" />
+              <div className="skeleton h-3 w-full rounded-full" />
+              <div className="skeleton h-3 w-4/5 rounded-full" />
+            </div>
+            <div className="skeleton mt-10 h-[52px] w-full rounded-full" />
+            <div className="skeleton mt-3 h-[52px] w-full rounded-full" />
           </div>
         </div>
-      </div>
+      </main>
     </>
   )
 }

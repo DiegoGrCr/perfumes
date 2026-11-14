@@ -1,268 +1,184 @@
 'use client'
 
-import { Search, X, SlidersHorizontal } from 'lucide-react'
-import { FilterState, Category, Gender, CATEGORY_LABELS, GENDER_LABELS } from '@/types/perfume'
+import { FilterState, Gender, GENDER_LABELS } from '@/types/perfume'
+import { formatPrice } from '@/lib/brand'
+
+export interface FilterOptions {
+  genders: [Gender, number][]
+  scentTypes: [string, number][]
+  seasons: [string, number][]
+  priceCeil: number
+  saleCount: number
+}
 
 interface Props {
   filters: FilterState
   onChange: (filters: FilterState) => void
-  totalCount: number
-  filteredCount: number
+  options: FilterOptions
 }
 
-const CATEGORIES: Category[] = ['arabe', 'disenador', 'otros']
-const GENDERS: Gender[]      = ['hombre', 'mujer', 'unisex']
+const SCENT_LABELS: Record<string, string> = { Gourmand: 'Dulce' }
+const SEASON_LABELS: Record<string, string> = { Verano: 'Calor', Invierno: 'Frío' }
 
-const CATEGORY_ICONS: Record<Category, string> = {
-  arabe: '☽', disenador: '◆', nicho: '◈', otros: '○',
-}
-
-const SCENT_TYPES: { value: string; label: string; emoji: string }[] = [
-  { value: 'Floral',     label: 'Floral',     emoji: '🌸' },
-  { value: 'Fresco',     label: 'Fresco',     emoji: '🍃' },
-  { value: 'Cítrico',    label: 'Cítrico',    emoji: '🍋' },
-  { value: 'Gourmand',   label: 'Dulce',      emoji: '🍯' },
-  { value: 'Amaderado',  label: 'Amaderado',  emoji: '🪵' },
-  { value: 'Oriental',   label: 'Oriental',   emoji: '☽' },
-  { value: 'Especiado',  label: 'Especiado',  emoji: '🌶️' },
-  { value: 'Marino',     label: 'Marino',     emoji: '🌊' },
-]
-
-const SEASONS: { value: string; label: string; emoji: string }[] = [
-  { value: 'Verano',    label: 'Calor',      emoji: '☀️' },
-  { value: 'Invierno',  label: 'Frío',       emoji: '❄️' },
-  { value: 'Primavera', label: 'Primavera',  emoji: '🌱' },
-  { value: 'Otoño',     label: 'Otoño',      emoji: '🍂' },
-]
-
-const DIVIDER = <div className="h-px" style={{ background: '#F0F0EE' }} />
-
-export default function FilterSidebar({ filters, onChange, totalCount, filteredCount }: Props) {
-  const activeCount =
-    filters.categories.length +
-    filters.genders.length +
-    filters.scentTypes.length +
-    filters.seasons.length +
-    (filters.inStockOnly ? 1 : 0) +
-    (filters.search ? 1 : 0) +
-    (filters.minPrice > 0 || filters.maxPrice < 5000 ? 1 : 0)
-
-  const toggleCategory  = (cat: Category) => onChange({ ...filters, categories: filters.categories.includes(cat) ? filters.categories.filter(c => c !== cat) : [...filters.categories, cat] })
-  const toggleGender    = (g: Gender)     => onChange({ ...filters, genders:    filters.genders.includes(g)       ? filters.genders.filter(x => x !== g)           : [...filters.genders, g] })
-  const toggleScentType = (v: string)     => onChange({ ...filters, scentTypes: filters.scentTypes.includes(v)    ? filters.scentTypes.filter(x => x !== v)         : [...filters.scentTypes, v] })
-  const toggleSeason    = (v: string)     => onChange({ ...filters, seasons:    filters.seasons.includes(v)        ? filters.seasons.filter(x => x !== v)            : [...filters.seasons, v] })
-
-  const clearAll = () => onChange({
-    categories: [], genders: [], scentTypes: [], seasons: [],
-    minPrice: 0, maxPrice: 5000, search: '', inStockOnly: false, sortBy: filters.sortBy,
-  })
-
-  const label = (text: string) => (
-    <span className="text-[10px] tracking-[0.35em] uppercase font-medium" style={{ color: '#aaa' }}>{text}</span>
-  )
-
-  const Checkbox = ({ active }: { active: boolean }) => (
-    <div className="w-3.5 h-3.5 rounded border-2 flex items-center justify-center transition-all"
-      style={{ background: active ? '#C9A84C' : 'transparent', borderColor: active ? '#C9A84C' : '#DDD' }}>
-      {active && <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-        <path d="M1 3l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>}
+function Group({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
+  return (
+    <div className="border-t border-line py-7 first:border-t-0 first:pt-0">
+      <div className="mb-4 flex items-baseline justify-between">
+        <h4 className="display text-xl">{title}</h4>
+        {aside}
+      </div>
+      {children}
     </div>
   )
+}
+
+function Chip({ active, onClick, children, count }: { active: boolean; onClick: () => void; children: React.ReactNode; count?: number }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[11px] tracking-wide transition-all duration-300 ease-lux ${
+        active
+          ? 'border-ink bg-ink text-ivory'
+          : 'border-line bg-transparent text-ink-soft hover:border-ink/40'
+      }`}
+    >
+      {children}
+      {count !== undefined && (
+        <span className={`text-[9px] ${active ? 'text-ivory/60' : 'text-faint'}`}>{count}</span>
+      )}
+    </button>
+  )
+}
+
+function Toggle({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between gap-4">
+      <span className="text-[13px] text-ink-soft">{label}<span className="block text-[11px] text-faint">{hint}</span></span>
+      <span className="relative inline-flex shrink-0">
+        <input type="checkbox" className="peer sr-only" checked={checked} onChange={e => onChange(e.target.checked)} />
+        <span className="h-6 w-11 rounded-full bg-line transition-colors duration-300 peer-checked:bg-ink peer-focus-visible:outline peer-focus-visible:outline-1 peer-focus-visible:outline-rose" />
+        <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-paper shadow transition-transform duration-300 ease-lux peer-checked:translate-x-5" />
+      </span>
+    </label>
+  )
+}
+
+function toggle<T>(list: T[], v: T) {
+  return list.includes(v) ? list.filter(x => x !== v) : [...list, v]
+}
+
+export default function FilterSidebar({ filters, onChange, options }: Props) {
+  const { priceCeil } = options
+  const step = priceCeil > 2000 ? 100 : 50
+  const presets = [
+    { label: `Hasta ${formatPrice(500)}`, min: 0, max: 500 },
+    { label: `${formatPrice(500)} – ${formatPrice(1000)}`, min: 500, max: 1000 },
+    { label: `${formatPrice(1000)} – ${formatPrice(2000)}`, min: 1000, max: 2000 },
+    { label: `Más de ${formatPrice(2000)}`, min: 2000, max: priceCeil },
+  ].filter(p => p.min < priceCeil)
+
+  const minPct = (filters.minPrice / priceCeil) * 100
+  const maxPct = (filters.maxPrice / priceCeil) * 100
 
   return (
-    <aside className="flex flex-col gap-5 w-full">
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal size={13} style={{ color: '#C9A84C' }} />
-          <span className="text-xs tracking-widest uppercase font-medium" style={{ color: '#1a1a1a' }}>Filtros</span>
-          {activeCount > 0 && (
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: '#C9A84C', color: '#fff' }}>
-              {activeCount}
-            </span>
-          )}
-        </div>
-        {activeCount > 0 && (
-          <button onClick={clearAll} className="text-[10px] tracking-widest uppercase flex items-center gap-1 transition-colors"
-            style={{ color: '#ccc' }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#C9A84C' }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#ccc' }}>
-            <X size={10} /> Limpiar
-          </button>
-        )}
-      </div>
-
-      {/* Result count */}
-      <div className="text-[10px] tracking-widest text-center py-2 rounded-full" style={{ background: '#F5F5F3', color: '#aaa' }}>
-        <span style={{ color: '#C9A84C', fontWeight: 600 }}>{filteredCount}</span> de {totalCount} fragancias
-      </div>
-
-      {/* Search */}
-      <div className="flex flex-col gap-2">
-        {label('Buscar')}
-        <div className="relative">
-          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#ccc' }} />
-          <input
-            type="text"
-            value={filters.search}
-            onChange={e => onChange({ ...filters, search: e.target.value })}
-            placeholder="Nombre, marca…"
-            className="w-full pl-8 pr-8 py-2.5 rounded-full text-sm transition-all"
-            style={{ background: '#F5F5F3', border: '1px solid #EBEBEB', color: '#1a1a1a', fontSize: '12px' }}
-            onFocus={e => { e.currentTarget.style.borderColor = '#C9A84C' }}
-            onBlur={e => { e.currentTarget.style.borderColor = '#EBEBEB' }}
-          />
-          {filters.search && (
-            <button onClick={() => onChange({ ...filters, search: '' })}
-              className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#ccc' }}>
-              <X size={10} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {DIVIDER}
-
-      {/* Scent type */}
-      <div className="flex flex-col gap-2.5">
-        {label('Tipo de aroma')}
-        <div className="grid grid-cols-2 gap-1.5">
-          {SCENT_TYPES.map(({ value, label: lbl, emoji }) => {
-            const active = filters.scentTypes.includes(value)
-            return (
-              <button key={value} onClick={() => toggleScentType(value)}
-                className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-all"
-                style={{
-                  background: active ? '#FBF6EC' : '#F5F5F3',
-                  border: `1px solid ${active ? '#E8D9A8' : 'transparent'}`,
-                }}>
-                <span style={{ fontSize: 14 }}>{emoji}</span>
-                <span className="text-[10px] tracking-wider flex-1" style={{ color: active ? '#C9A84C' : '#888' }}>
-                  {lbl}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {DIVIDER}
-
-      {/* Season */}
-      <div className="flex flex-col gap-2.5">
-        {label('Temporada')}
-        <div className="grid grid-cols-2 gap-1.5">
-          {SEASONS.map(({ value, label: lbl, emoji }) => {
-            const active = filters.seasons.includes(value)
-            return (
-              <button key={value} onClick={() => toggleSeason(value)}
-                className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-all"
-                style={{
-                  background: active ? '#FBF6EC' : '#F5F5F3',
-                  border: `1px solid ${active ? '#E8D9A8' : 'transparent'}`,
-                }}>
-                <span style={{ fontSize: 14 }}>{emoji}</span>
-                <span className="text-[10px] tracking-wider flex-1" style={{ color: active ? '#C9A84C' : '#888' }}>
-                  {lbl}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {DIVIDER}
-
-      {/* Categories */}
-      <div className="flex flex-col gap-2.5">
-        {label('Categoría')}
-        <div className="flex flex-col gap-1">
-          {CATEGORIES.map(cat => {
-            const active = filters.categories.includes(cat)
-            return (
-              <button key={cat} onClick={() => toggleCategory(cat)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all"
-                style={{
-                  background: active ? '#FBF6EC' : 'transparent',
-                  border: `1px solid ${active ? '#E8D9A8' : 'transparent'}`,
-                }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#F8F8F6' }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
-              >
-                <span style={{ color: active ? '#C9A84C' : '#ccc', fontSize: 13 }}>{CATEGORY_ICONS[cat]}</span>
-                <span className="text-xs tracking-wider flex-1" style={{ color: active ? '#C9A84C' : '#888' }}>
-                  {CATEGORY_LABELS[cat]}
-                </span>
-                <Checkbox active={active} />
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {DIVIDER}
-
-      {/* Gender */}
-      <div className="flex flex-col gap-2.5">
-        {label('Para')}
-        <div className="grid grid-cols-3 gap-1.5">
-          {GENDERS.map(g => {
-            const active = filters.genders.includes(g)
-            return (
-              <button key={g} onClick={() => toggleGender(g)}
-                className="py-2 rounded-full text-[10px] tracking-wider uppercase font-medium transition-all"
-                style={{
-                  background: active ? '#C9A84C' : '#F5F5F3',
-                  color: active ? '#fff' : '#888',
-                  border: `1px solid ${active ? '#C9A84C' : '#EBEBEB'}`,
-                }}>
+    <div className="flex flex-col">
+      {options.genders.length > 0 && (
+        <Group title="Para">
+          <div className="flex flex-wrap gap-2">
+            {options.genders.map(([g, n]) => (
+              <Chip key={g} active={filters.genders.includes(g)} count={n}
+                onClick={() => onChange({ ...filters, genders: toggle(filters.genders, g) })}>
                 {GENDER_LABELS[g]}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+              </Chip>
+            ))}
+          </div>
+        </Group>
+      )}
 
-      {DIVIDER}
+      {options.scentTypes.length > 0 && (
+        <Group title="Aroma">
+          <div className="flex flex-wrap gap-2">
+            {options.scentTypes.map(([v, n]) => (
+              <Chip key={v} active={filters.scentTypes.includes(v)} count={n}
+                onClick={() => onChange({ ...filters, scentTypes: toggle(filters.scentTypes, v) })}>
+                {SCENT_LABELS[v] ?? v}
+              </Chip>
+            ))}
+          </div>
+        </Group>
+      )}
 
-      {/* Price */}
-      <div className="flex flex-col gap-2.5">
-        <div className="flex items-center justify-between">
-          {label('Precio')}
-          <span className="text-[10px] font-medium" style={{ color: '#C9A84C' }}>
-            ${filters.minPrice} – ${filters.maxPrice >= 5000 ? '5000+' : filters.maxPrice}
+      {options.seasons.length > 0 && (
+        <Group title="Temporada">
+          <div className="flex flex-wrap gap-2">
+            {options.seasons.map(([v, n]) => (
+              <Chip key={v} active={filters.seasons.includes(v)} count={n}
+                onClick={() => onChange({ ...filters, seasons: toggle(filters.seasons, v) })}>
+                {SEASON_LABELS[v] ?? v}
+              </Chip>
+            ))}
+          </div>
+        </Group>
+      )}
+
+      <Group
+        title="Precio"
+        aside={
+          <span className="text-[11px] text-muted">
+            {formatPrice(filters.minPrice)} – {formatPrice(filters.maxPrice)}
           </span>
+        }
+      >
+        {/* Dual range */}
+        <div className="relative h-6">
+          <div className="absolute top-1/2 h-px w-full -translate-y-1/2 bg-line" />
+          <div
+            className="absolute top-1/2 h-[2px] -translate-y-1/2 bg-ink"
+            style={{ left: `${minPct}%`, right: `${100 - maxPct}%` }}
+          />
+          <input
+            type="range" min={0} max={priceCeil} step={step} value={filters.minPrice}
+            aria-label="Precio mínimo"
+            onChange={e => onChange({ ...filters, minPrice: Math.min(Number(e.target.value), filters.maxPrice - step) })}
+            className="range-thumb absolute inset-0 w-full"
+          />
+          <input
+            type="range" min={0} max={priceCeil} step={step} value={filters.maxPrice}
+            aria-label="Precio máximo"
+            onChange={e => onChange({ ...filters, maxPrice: Math.max(Number(e.target.value), filters.minPrice + step) })}
+            className="range-thumb absolute inset-0 w-full"
+          />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <input type="range" min={0} max={5000} step={10} value={filters.minPrice}
-            onChange={e => onChange({ ...filters, minPrice: Number(e.target.value) })}
-            className="w-full" style={{ accentColor: '#C9A84C' }} />
-          <input type="range" min={0} max={5000} step={10} value={filters.maxPrice}
-            onChange={e => onChange({ ...filters, maxPrice: Number(e.target.value) })}
-            className="w-full" style={{ accentColor: '#C9A84C' }} />
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            { label: '< $50', min: 0, max: 50 },
-            { label: '$50–$150', min: 50, max: 150 },
-            { label: '$150–$500', min: 150, max: 500 },
-            { label: '$500+', min: 500, max: 5000 },
-          ].map(({ label: l, min, max }) => (
-            <button key={l} onClick={() => onChange({ ...filters, minPrice: min, maxPrice: max })}
-              className="text-[9px] tracking-wider uppercase px-2.5 py-1 rounded-full transition-all"
-              style={{ border: '1px solid #EBEBEB', color: '#888', background: '#F5F5F3' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#C9A84C'; e.currentTarget.style.color = '#C9A84C' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = '#EBEBEB'; e.currentTarget.style.color = '#888' }}>
-              {l}
-            </button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {presets.map(p => (
+            <Chip key={p.label}
+              active={filters.minPrice === p.min && filters.maxPrice === p.max}
+              onClick={() => onChange({ ...filters, minPrice: p.min, maxPrice: p.max })}>
+              {p.label}
+            </Chip>
           ))}
         </div>
-      </div>
+      </Group>
 
-      {DIVIDER}
-
-    </aside>
+      <Group title="Disponibilidad">
+        <div className="space-y-5">
+          {options.saleCount > 0 && (
+            <Toggle
+              label="Solo en oferta"
+              hint={`${options.saleCount} con descuento activo`}
+              checked={filters.onSaleOnly}
+              onChange={v => onChange({ ...filters, onSaleOnly: v })}
+            />
+          )}
+          <Toggle
+            label="Solo en existencia"
+            hint="Oculta las de sobre pedido"
+            checked={filters.inStockOnly}
+            onChange={v => onChange({ ...filters, inStockOnly: v })}
+          />
+        </div>
+      </Group>
+    </div>
   )
 }

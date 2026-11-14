@@ -159,7 +159,11 @@ export default function DashboardPage() {
             {tab === 'catalogo' && (
               <>
                 <InventorySummary perfumes={perfumes} />
-                <AdminPerfumeList initialPerfumes={perfumes} />
+                <AdminPerfumeList
+                  initialPerfumes={perfumes}
+                  onPerfumeUpdated={p => setPerfumes(ps => ps.map(x => (x.id === p.id ? p : x)))}
+                  onPerfumeDeleted={id => setPerfumes(ps => ps.filter(x => x.id !== id))}
+                />
               </>
             )}
 

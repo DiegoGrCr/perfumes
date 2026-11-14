@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Velvet',
     short_name: 'Velvet',
-    description: 'Catálogo de fragancias árabes, de diseñador y de nicho',
+    description: 'Catálogo de fragancias árabes y de diseñador',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',

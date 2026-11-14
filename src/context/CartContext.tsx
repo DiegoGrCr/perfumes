@@ -22,7 +22,10 @@ interface CartContextType {
   flyToCart: (fromEl: HTMLElement, imageUrl?: string) => void
 }
 
-const CartContext = createContext<CartContextType | null>(null)
+// Singleton on globalThis: in dev, Turbopack can instantiate this module twice
+// (separate chunks), which would give provider and consumers different contexts.
+const g = globalThis as typeof globalThis & { __velvetCartCtx?: React.Context<CartContextType | null> }
+const CartContext = (g.__velvetCartCtx ??= createContext<CartContextType | null>(null))
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems]           = useState<CartItem[]>([])
@@ -87,11 +90,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       'overflow:hidden',
       'z-index:9999',
       'pointer-events:none',
-      'border:2px solid #C9A84C',
+      'border:1.5px solid #17120F',
       imageUrl
-        ? `background:url(${imageUrl}) center/cover no-repeat`
-        : 'background:#C9A84C33',
-      'box-shadow:0 4px 16px rgba(201,168,76,0.35)',
+        ? `background:#F6F1EB url(${imageUrl}) center/contain no-repeat`
+        : 'background:#EEE6DC',
+      'box-shadow:0 10px 30px rgba(23,18,15,0.25)',
     ].join(';')
     document.body.appendChild(fly)
 

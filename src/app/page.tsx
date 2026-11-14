@@ -1,6 +1,14 @@
 import Header from '@/components/Header'
+import Footer from '@/components/Footer'
 import CatalogClient from '@/components/CatalogClient'
+import Hero from '@/components/home/Hero'
+import BrandMarquee from '@/components/home/BrandMarquee'
+import Families, { FamilyInfo } from '@/components/home/Families'
+import BrandPromise from '@/components/home/BrandPromise'
+import OffersTeaser from '@/components/home/OffersTeaser'
+import OffersRibbon from '@/components/home/OffersRibbon'
 import { mockPerfumes } from '@/lib/mock-data'
+import { primaryImage } from '@/lib/brand'
 import { createClient } from '@supabase/supabase-js'
 import { Perfume } from '@/types/perfume'
 
@@ -9,12 +17,7 @@ export const revalidate = 60  // revalidar cada 60 s en servidor
 async function fetchPerfumes(): Promise<Perfume[]> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  console.log('[catalog] url:', !!url, '| key:', !!key)
-  if (!url || !key) {
-    console.log('[catalog] → sin env vars, usando mock')
-    return mockPerfumes
-  }
+  if (!url || !key) return mockPerfumes
 
   const supabase = createClient(url, key)
   const { data, error } = await supabase
@@ -23,65 +26,51 @@ async function fetchPerfumes(): Promise<Perfume[]> {
     .order('featured', { ascending: false })
     .order('created_at', { ascending: false })
 
-  console.log('[catalog] data:', data?.length, '| error:', error?.message)
   if (error || !data || data.length === 0) {
-    console.log('[catalog] → fallback a mock')
+    console.log('[catalog] fallback a mock:', error?.message)
     return mockPerfumes
   }
   return data
 }
 
+const CATEGORY_ORDER = ['arabe', 'disenador', 'otros'] as const
+
 export default async function Home() {
   const perfumes = await fetchPerfumes()
 
+  // Hero: featured bottles with photos first, then any other with photos
+  const withImage = perfumes.filter(p => primaryImage(p) && p.in_stock)
+  const showcase = [
+    ...withImage.filter(p => p.featured),
+    ...withImage.filter(p => !p.featured),
+  ].slice(0, 5)
+
+  const brands = [...new Set(perfumes.map(p => p.brand.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+
+  const families: FamilyInfo[] = CATEGORY_ORDER
+    .map(category => {
+      const items = perfumes.filter(p => p.category === category)
+      const images = [
+        ...items.filter(p => p.featured),
+        ...items.filter(p => !p.featured),
+      ].map(primaryImage).filter((u): u is string => !!u).slice(0, 1)
+      return { category, count: items.length, images }
+    })
+    .filter(f => f.count > 0)
+
   return (
-    <div style={{ background: '#F8F7F4', minHeight: '100vh' }}>
-      <Header />
-
-      {/* Hero banner */}
-      <section className="relative overflow-hidden" style={{ background: '#fff', borderBottom: '1px solid #EBEBEB' }}>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 text-center">
-          <div className="flex items-center justify-center gap-4 mb-5">
-            <div className="h-px flex-1 max-w-16" style={{ background: 'linear-gradient(90deg, transparent, #C9A84C55)' }} />
-            <span className="text-xs" style={{ color: '#C9A84C' }}>✦</span>
-            <div className="h-px flex-1 max-w-16" style={{ background: 'linear-gradient(90deg, #C9A84C55, transparent)' }} />
-          </div>
-
-          <h2 className="text-3xl sm:text-4xl font-light leading-tight mb-3" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>
-            El arte de la fragancia
-          </h2>
-
-          <p className="text-sm leading-relaxed max-w-md mx-auto" style={{ color: '#999' }}>
-            Árabes, de diseñador y de nicho. Cada botella es una historia.
-          </p>
-
-          {/* Stats */}
-          <div className="flex items-center justify-center gap-10 mt-8">
-            {[
-              { value: `${perfumes.length}+`, label: 'Fragancias' },
-              { value: '100%', label: 'Originales' },
-              { value: '4', label: 'Categorías' },
-            ].map(({ value, label }) => (
-              <div key={label} className="text-center">
-                <p className="text-xl font-semibold" style={{ color: '#C9A84C' }}>{value}</p>
-                <p className="text-[10px] tracking-widest uppercase mt-0.5" style={{ color: '#bbb' }}>{label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Catalog */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+    <>
+      <Header overlay />
+      <main>
+        <Hero showcase={showcase} totalCount={perfumes.length} brandCount={brands.length} />
+        <OffersRibbon />
+        <Families families={families} />
+        <OffersTeaser perfumes={perfumes} />
+        <BrandMarquee brands={brands} />
         <CatalogClient perfumes={perfumes} />
-      </section>
-
-      {/* Footer */}
-      <footer className="text-center py-8" style={{ borderTop: '1px solid #EBEBEB', background: '#fff' }}>
-        <p className="text-[10px] tracking-widest uppercase" style={{ color: '#ccc' }}>
-          © 2026 Velvet · Fragancias auténticas
-        </p>
-      </footer>
-    </div>
+        <BrandPromise />
+      </main>
+      <Footer />
+    </>
   )
 }
