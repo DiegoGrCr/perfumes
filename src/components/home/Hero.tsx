@@ -64,7 +64,7 @@ export default function Hero({ showcase, totalCount, brandCount }: Props) {
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(18,12,11,0)_60%,rgba(18,12,11,0.9)_100%)]" />
       </div>
 
-      <div className="relative mx-auto grid min-h-[100svh] max-w-7xl grid-cols-1 items-center gap-6 sm:gap-10 px-5 pt-28 pb-20 sm:px-8 lg:grid-cols-12 lg:gap-6 lg:pt-40 lg:pb-24">
+      <div className="relative mx-auto grid min-h-[100svh] max-w-7xl grid-cols-1 items-center gap-6 sm:gap-10 px-5 pt-44 pb-20 sm:px-8 lg:grid-cols-12 lg:gap-6 lg:pt-40 lg:pb-24">
         {/* ── Copy ─────────────────────────────────── */}
         <div className="lg:col-span-7 order-2 lg:order-1">
           <p className="eyebrow mb-7 flex items-center gap-4 text-rose-light anim-fade-up" style={{ animationDelay: '150ms' }}>

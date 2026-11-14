@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ShoppingBag, Menu, X, ArrowUpRight, LayoutDashboard, LogOut, Tag } from 'lucide-react'
+import { ShoppingBag, Menu, X, ArrowUpRight, Tag, Search } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
-import { useAdmin } from '@/context/AdminContext'
 import { useOffers } from '@/context/OffersContext'
+import { openSearch, prefetchSearch } from '@/components/SearchOverlay'
 import { waLink } from '@/lib/brand'
 
 const NAV = [
@@ -26,7 +26,6 @@ const BASE_ANNOUNCEMENTS = [
  */
 export default function Header({ overlay = false }: { overlay?: boolean }) {
   const { totalItems, openDrawer, cartBagRef } = useCart()
-  const { isAdmin, signOut } = useAdmin()
   const offers = useOffers()
   const hasOffers = offers.count > 0
   // Offers lead the rotation (and link to the offers page) whenever there are any
@@ -104,6 +103,14 @@ export default function Header({ overlay = false }: { overlay?: boolean }) {
               >
                 {menuOpen ? <X size={20} strokeWidth={1.5} /> : <Menu size={20} strokeWidth={1.5} />}
               </button>
+              <button
+                onClick={() => { setMenuOpen(false); openSearch() }}
+                onTouchStart={prefetchSearch}
+                aria-label="Buscar fragancias"
+                className={`-ml-6 p-2 lg:hidden ${scrolled ? 'block' : 'hidden'} ${fg} transition-colors`}
+              >
+                <Search size={19} strokeWidth={1.4} />
+              </button>
               <nav className="hidden lg:flex items-center gap-8">
                 {NAV.map(n => (
                   <Link
@@ -144,28 +151,29 @@ export default function Header({ overlay = false }: { overlay?: boolean }) {
 
             {/* Right: actions */}
             <div className="flex items-center justify-end gap-2 sm:gap-5">
-              {isAdmin && (
-                <div className={`hidden md:flex items-center gap-1 rounded-full border py-1 pl-3 pr-1 transition-colors duration-500 ${transparent ? 'border-white/20' : 'border-line bg-paper'}`}>
-                  <span className="mr-1 flex items-center gap-1.5 eyebrow text-[8px] text-rose-light">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    <span className={transparent ? 'text-rose-light' : 'text-rose'}>Admin</span>
-                  </span>
-                  <Link href="/admin/dashboard" title="Panel" aria-label="Ir al panel" className={`rounded-full p-1.5 transition-colors ${transparent ? 'text-ivory hover:bg-white/10' : 'text-ink hover:bg-sand'}`}>
-                    <LayoutDashboard size={14} strokeWidth={1.5} />
-                  </Link>
-                  <button onClick={signOut} title="Salir" aria-label="Cerrar sesión" className={`rounded-full p-1.5 transition-colors ${transparent ? 'text-ivory hover:bg-white/10' : 'text-ink hover:bg-sand'}`}>
-                    <LogOut size={14} strokeWidth={1.5} />
-                  </button>
-                </div>
-              )}
               <a
                 href={waLink()}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`hidden sm:inline-flex eyebrow text-[10px] link-underline pb-1 ${fg} transition-colors duration-500 hover:opacity-70`}
+                className={`hidden sm:inline-flex lg:hidden xl:inline-flex eyebrow text-[10px] link-underline pb-1 ${fg} transition-colors duration-500 hover:opacity-70`}
               >
                 Contacto
               </a>
+              <button
+                onClick={openSearch}
+                onPointerEnter={prefetchSearch}
+                onFocus={prefetchSearch}
+                aria-label="Buscar fragancias"
+                className={`group hidden h-10 w-52 items-center gap-2.5 rounded-full border px-4 text-left transition-all duration-500 ease-lux lg:flex xl:w-64 ${
+                  transparent
+                    ? 'border-white/20 bg-white/5 text-ivory/60 hover:border-white/40 hover:text-ivory'
+                    : 'border-line bg-paper text-muted hover:border-ink/40 hover:text-ink'
+                }`}
+              >
+                <Search size={15} strokeWidth={1.5} className="shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-[12px]">Buscar fragancia o marca…</span>
+                <kbd className={`rounded border px-1.5 text-[9px] ${transparent ? 'border-white/20 text-ivory/40' : 'border-line text-faint'}`}>/</kbd>
+              </button>
               {/* Mobile / tablet: offers shortcut next to the bag */}
               {hasOffers && (
                 <Link
@@ -200,6 +208,26 @@ export default function Header({ overlay = false }: { overlay?: boolean }) {
               </button>
             </div>
           </div>
+
+          {/* Mobile / tablet search bar — visible at the top, collapses on scroll */}
+          <div
+            className={`overflow-hidden transition-all duration-700 ease-lux lg:hidden ${
+              scrolled || menuOpen ? 'max-h-0 opacity-0' : 'max-h-16 pb-3 opacity-100'
+            }`}
+          >
+            <button
+              onClick={openSearch}
+              onTouchStart={prefetchSearch}
+              onPointerEnter={prefetchSearch}
+              aria-label="Buscar fragancias"
+              className={`flex h-11 w-full items-center gap-3 rounded-full border px-4 text-left transition-colors ${
+                transparent ? 'border-white/20 bg-white/5 text-ivory/60' : 'border-line bg-paper text-muted'
+              }`}
+            >
+              <Search size={16} strokeWidth={1.5} className="shrink-0" />
+              <span className="truncate text-[13px]">Buscar fragancia, marca o nota…</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -233,16 +261,6 @@ export default function Header({ overlay = false }: { overlay?: boolean }) {
           >
             WhatsApp <ArrowUpRight size={14} />
           </a>
-          {isAdmin && (
-            <div className="mt-8 flex items-center gap-6 border-t border-line pt-6">
-              <Link href="/admin/dashboard" onClick={() => setMenuOpen(false)} className="eyebrow flex items-center gap-2 text-ink">
-                <LayoutDashboard size={14} /> Panel
-              </Link>
-              <button onClick={() => { signOut(); setMenuOpen(false) }} className="eyebrow flex items-center gap-2 text-muted">
-                <LogOut size={14} /> Salir
-              </button>
-            </div>
-          )}
         </nav>
       </div>
     </>

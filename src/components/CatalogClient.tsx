@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef, useDeferredValue } from 'react'
-import { SlidersHorizontal, X, Search, ChevronDown } from 'lucide-react'
+import { SlidersHorizontal, X, Search, ChevronDown, MessageCircle } from 'lucide-react'
 import { Perfume, FilterState, SortOption, Category, Gender, CATEGORY_LABELS, GENDER_LABELS } from '@/types/perfume'
-import { byAvailability, discountPct, formatPrice } from '@/lib/brand'
+import { byAvailability, discountPct, formatPrice, waLink } from '@/lib/brand'
+import { searchPerfumes, notFoundWhatsAppText } from '@/lib/search'
+import { APPLY_SEARCH_EVENT } from './SearchOverlay'
 import { useLivePerfumes } from '@/context/AdminContext'
 import PerfumeCard from './PerfumeCard'
 import FilterSidebar, { FilterOptions } from './FilterSidebar'
@@ -32,7 +34,6 @@ function countBy<T extends string>(values: (T | undefined | null)[]): [T, number
 
 const stockFirst = (a: Perfume, b: Perfume) => Number(b.in_stock) - Number(a.in_stock)
 
-const normalize = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 export default function CatalogClient({ perfumes: serverPerfumes }: Props) {
   // Admin edits show up immediately, before the server cache refreshes
@@ -81,6 +82,21 @@ export default function CatalogClient({ perfumes: serverPerfumes }: Props) {
     return () => window.removeEventListener('velvet:filter', onFilter)
   }, [])
 
+  // Global search overlay → catalog: via event (already on home) or ?q= (coming from another page)
+  useEffect(() => {
+    const apply = (q: string) => setFilters(f => ({ ...f, search: q }))
+    const fromUrl = new URLSearchParams(window.location.search).get('q')
+    if (fromUrl) {
+      apply(fromUrl)
+      // clean the URL but keep the #coleccion anchor
+      window.history.replaceState(null, '', `/${window.location.hash}`)
+      requestAnimationFrame(() => document.getElementById('coleccion')?.scrollIntoView())
+    }
+    const onApply = (e: Event) => apply((e as CustomEvent<{ q: string }>).detail.q)
+    window.addEventListener(APPLY_SEARCH_EVENT, onApply)
+    return () => window.removeEventListener(APPLY_SEARCH_EVENT, onApply)
+  }, [])
+
   useEffect(() => {
     if (!sheetOpen) return
     document.body.style.overflow = 'hidden'
@@ -89,15 +105,9 @@ export default function CatalogClient({ perfumes: serverPerfumes }: Props) {
 
   const filtered = useMemo(() => {
     let list = [...perfumes]
-    if (search) {
-      const q = normalize(search.trim())
-      list = list.filter(p =>
-        normalize(p.name).includes(q) ||
-        normalize(p.brand).includes(q) ||
-        normalize(p.description ?? '').includes(q) ||
-        [...(p.notes_top ?? []), ...(p.notes_heart ?? []), ...(p.notes_base ?? [])].some(n => normalize(n).includes(q)),
-      )
-    }
+    // Same typo-tolerant engine as the global search; keeps relevance order
+    const ranked = search.trim() ? (searchPerfumes(perfumes, search).items as Perfume[]) : null
+    if (ranked) list = ranked
     if (filters.categories.length) list = list.filter(p => filters.categories.includes(p.category))
     if (filters.genders.length)    list = list.filter(p => filters.genders.includes(p.gender))
     list = list.filter(p => p.price >= filters.minPrice && p.price <= filters.maxPrice)
@@ -112,7 +122,8 @@ export default function CatalogClient({ perfumes: serverPerfumes }: Props) {
       case 'price_desc': list.sort((a, b) => stockFirst(a, b) || b.price - a.price); break
       case 'name_asc':   list.sort((a, b) => stockFirst(a, b) || a.name.localeCompare(b.name)); break
       default:
-        list.sort(byAvailability)
+        // while searching, "Recomendados" means most relevant first
+        if (!ranked) list.sort(byAvailability)
     }
     return list
   }, [perfumes, filters, search])
@@ -255,6 +266,12 @@ export default function CatalogClient({ perfumes: serverPerfumes }: Props) {
                 <X size={11} className="text-muted transition-transform duration-300 group-hover:rotate-90" />
               </button>
             ))}
+            {filters.search.trim() && filtered.length > 0 && (
+              <a href={waLink(notFoundWhatsAppText(filters.search))} target="_blank" rel="noopener noreferrer"
+                className="ml-auto flex items-center gap-1.5 text-[11px] text-muted link-underline hover:text-ink">
+                <MessageCircle size={12} /> ¿No es lo que buscas? Lo pedimos para ti
+              </a>
+            )}
             {chips.length > 1 && (
               <button onClick={clearAll} className="link-underline ml-1 text-[11px] text-muted hover:text-ink">
                 Limpiar
@@ -287,13 +304,32 @@ export default function CatalogClient({ perfumes: serverPerfumes }: Props) {
               )}
             </>
           ) : (
-            <div className="flex flex-col items-center py-28 text-center">
-              <p className="display text-4xl sm:text-5xl">Nada por aquí… <em className="text-rose">aún.</em></p>
-              <p className="mt-4 max-w-xs text-sm text-muted">
-                No encontramos fragancias con esos filtros. Prueba quitando alguno o escríbenos y la buscamos por ti.
-              </p>
-              <button onClick={clearAll} className="btn btn-ink mt-8">Limpiar filtros</button>
-            </div>
+            filters.search.trim() ? (
+              /* Searched for something we don't carry → offer it on special order */
+              <div className="flex flex-col items-center py-24 text-center">
+                <p className="eyebrow mb-4 text-[9px] text-rose">Sobre pedido</p>
+                <p className="display max-w-2xl text-4xl leading-tight sm:text-5xl">
+                  No tenemos <span className="italic">“{filters.search.trim()}”</span>… <em className="text-rose">todavía.</em>
+                </p>
+                <p className="mt-4 max-w-md text-sm leading-relaxed text-muted">
+                  Lo conseguimos para ti. Escríbenos por WhatsApp y te confirmamos precio y tiempo de entrega, sin compromiso.
+                </p>
+                <div className="mt-8 flex flex-wrap justify-center gap-3">
+                  <a href={waLink(notFoundWhatsAppText(filters.search))} target="_blank" rel="noopener noreferrer" className="btn btn-ink">
+                    <MessageCircle size={15} /> Pedir por WhatsApp
+                  </a>
+                  <button onClick={clearAll} className="btn btn-ghost">Ver todo el catálogo</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center py-28 text-center">
+                <p className="display text-4xl sm:text-5xl">Nada por aquí… <em className="text-rose">aún.</em></p>
+                <p className="mt-4 max-w-xs text-sm text-muted">
+                  No encontramos fragancias con esos filtros. Prueba quitando alguno o escríbenos y la buscamos por ti.
+                </p>
+                <button onClick={clearAll} className="btn btn-ink mt-8">Limpiar filtros</button>
+              </div>
+            )
           )}
         </div>
       </div>

@@ -6,8 +6,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    // Aplica el middleware a todas las rutas excepto archivos estáticos
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  // Only the admin area needs a server-side session check. Running it on every
+  // storefront request called Supabase Auth on each page view and hit its rate
+  // limit (429). Storefront admin edits verify the session inside the server action.
+  matcher: ['/admin/:path*'],
 }
