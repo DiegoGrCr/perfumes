@@ -6,25 +6,15 @@ import { useCart, CartItem } from '@/context/CartContext'
 import { POLICY, formatPrice, needsDeposit, primaryImage, stockLabel, waLink } from '@/lib/brand'
 import BottleSilhouette from '@/components/ui/BottleSilhouette'
 
-/** Anticipo: POLICY.depositPct of each fragrance that requires it (see needsDeposit). */
-function depositOf(items: CartItem[]) {
-  const base = items
-    .filter(i => needsDeposit(i.perfume))
-    .reduce((s, i) => s + i.perfume.price * i.quantity, 0)
-  return Math.round((base * POLICY.depositPct) / 100)
-}
-
 function buildMsg(items: CartItem[]): string {
   const lines = items.map(({ perfume, quantity, volume }) =>
     `• ${perfume.name} (${perfume.brand}) – ${volume}ml × ${quantity}  ${formatPrice(perfume.price * quantity)}${perfume.in_stock ? '' : ' (sobre pedido)'}`
   )
   const total = items.reduce((s, i) => s + i.perfume.price * i.quantity, 0)
-  const deposit = depositOf(items)
   return (
     `¡Hola! Me gustaría realizar el siguiente pedido:\n\n` +
     lines.join('\n') +
     `\n\nTotal estimado: ${formatPrice(total)}` +
-    (deposit ? `\nAnticipo (${POLICY.depositPct}%): ${formatPrice(deposit)}` : '') +
     `\n\nHe leído y acepto los términos y condiciones (si cancelo con anticipo pagado, se retiene el ${POLICY.cancelFeePct}% del precio del perfume).` +
     `\n\n¡Gracias! 🙏`
   )
@@ -34,7 +24,7 @@ export default function CartDrawer() {
   const { items, drawerOpen, closeDrawer, removeItem, updateQty, clearCart, totalItems } = useCart()
   const [accepted, setAccepted] = useState(false)
   const total   = items.reduce((s, i) => s + i.perfume.price * i.quantity, 0)
-  const deposit = depositOf(items)
+  const hasDeposit = items.some(i => needsDeposit(i.perfume))
 
   useEffect(() => {
     if (!drawerOpen) return
@@ -160,13 +150,13 @@ export default function CartDrawer() {
               <span className="display text-4xl">{formatPrice(total)}</span>
             </div>
 
-            {deposit > 0 && (
+            {hasDeposit && (
               <div className="flex items-start gap-2.5 rounded-sm bg-rose-soft px-4 py-3 text-[12px] leading-relaxed text-ink-soft">
                 <Info size={14} className="mt-0.5 shrink-0 text-rose" />
                 <span>
-                  Anticipo del <strong className="font-medium">{POLICY.depositPct}%</strong> en fragancias de más de {formatPrice(POLICY.depositFrom)}
-                  {POLICY.depositScope === 'sobre-pedido' ? ' sobre pedido' : ''}:{' '}
-                  <strong className="font-medium">{formatPrice(deposit)}</strong>. El resto, al entregar.
+                  Las fragancias de más de {formatPrice(POLICY.depositFrom)}
+                  {POLICY.depositScope === 'sobre-pedido' ? ' sobre pedido' : ''} requieren{' '}
+                  <strong className="font-medium">{POLICY.depositPct}% de anticipo</strong>. Te lo confirmamos por WhatsApp.
                 </span>
               </div>
             )}
