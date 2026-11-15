@@ -15,7 +15,6 @@ function buildMsg(items: CartItem[]): string {
     `¡Hola! Me gustaría realizar el siguiente pedido:\n\n` +
     lines.join('\n') +
     `\n\nTotal estimado: ${formatPrice(total)}` +
-    `\n\nHe leído y acepto los términos y condiciones (si cancelo con anticipo pagado, se retiene el ${POLICY.cancelFeePct}% del precio del perfume).` +
     `\n\n¡Gracias! 🙏`
   )
 }
