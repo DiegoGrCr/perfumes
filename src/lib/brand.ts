@@ -1,6 +1,21 @@
 import { Perfume } from '@/types/perfume'
 
-export const WHATSAPP_NUMBER = '527296769572'
+/** WhatsApp where every order and inquiry goes (country code 52 + 10 digits). */
+export const WHATSAPP_NUMBER = '524411057796'
+export const WHATSAPP_DISPLAY = '+52 441 105 7796'
+
+/** Order policy — single source for the cart, the terms page and messages. */
+export const POLICY = {
+  depositPct: 30,          // anticipo, % of each qualifying fragrance's price
+  depositFrom: 800,        // applies to fragrances priced above this (MXN)
+  // 'todas' → every fragrance above depositFrom · 'sobre-pedido' → only special-order ones above depositFrom
+  depositScope: 'todas' as 'todas' | 'sobre-pedido',
+  cancelFeePct: 20,        // % of the fragrance's price kept from the deposit if the customer cancels (logistics)
+}
+
+/** Does this fragrance require the anticipo? */
+export const needsDeposit = (p: Pick<Perfume, 'price' | 'in_stock'>) =>
+  p.price > POLICY.depositFrom && (POLICY.depositScope === 'todas' || !p.in_stock)
 
 export const waLink = (text?: string) =>
   `https://wa.me/${WHATSAPP_NUMBER}${text ? `?text=${encodeURIComponent(text)}` : ''}`

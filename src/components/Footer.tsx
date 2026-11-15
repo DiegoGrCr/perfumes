@@ -45,6 +45,7 @@ export default function Footer() {
             <ul className="space-y-3 text-sm text-ivory/75">
               <li><Link href="/#coleccion" className="link-underline">Toda la colección</Link></li>
               <li><Link href="/ofertas" className="link-underline">Ofertas activas</Link></li>
+              <li><Link href="/terminos" className="link-underline">Términos y condiciones</Link></li>
               <li><Link href="/#familias" className="link-underline">Familias olfativas</Link></li>
               <li><Link href="/#promesa" className="link-underline">Nuestra promesa</Link></li>
             </ul>
@@ -66,7 +67,7 @@ export default function Footer() {
 
         <div className="flex flex-col gap-3 border-t border-white/10 pt-8 text-[10px] uppercase tracking-[0.3em] text-ivory/35 sm:flex-row sm:justify-between">
           <span>© {new Date().getFullYear()} Velvet Perfumes</span>
-          <span>Fragancias auténticas</span>
+          <Link href="/terminos" className="link-underline hover:text-ivory/70">Términos y condiciones</Link>
         </div>
       </div>
     </footer>

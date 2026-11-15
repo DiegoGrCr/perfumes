@@ -1,27 +1,40 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { X, Minus, Plus, MessageCircle, Info } from 'lucide-react'
 import { useCart, CartItem } from '@/context/CartContext'
-import { formatPrice, primaryImage, stockLabel, waLink } from '@/lib/brand'
+import { POLICY, formatPrice, needsDeposit, primaryImage, stockLabel, waLink } from '@/lib/brand'
 import BottleSilhouette from '@/components/ui/BottleSilhouette'
+
+/** Anticipo: POLICY.depositPct of each fragrance that requires it (see needsDeposit). */
+function depositOf(items: CartItem[]) {
+  const base = items
+    .filter(i => needsDeposit(i.perfume))
+    .reduce((s, i) => s + i.perfume.price * i.quantity, 0)
+  return Math.round((base * POLICY.depositPct) / 100)
+}
 
 function buildMsg(items: CartItem[]): string {
   const lines = items.map(({ perfume, quantity, volume }) =>
     `• ${perfume.name} (${perfume.brand}) – ${volume}ml × ${quantity}  ${formatPrice(perfume.price * quantity)}${perfume.in_stock ? '' : ' (sobre pedido)'}`
   )
   const total = items.reduce((s, i) => s + i.perfume.price * i.quantity, 0)
+  const deposit = depositOf(items)
   return (
     `¡Hola! Me gustaría realizar el siguiente pedido:\n\n` +
     lines.join('\n') +
-    `\n\nTotal estimado: ${formatPrice(total)}\n\n¡Gracias! 🙏`
+    `\n\nTotal estimado: ${formatPrice(total)}` +
+    (deposit ? `\nAnticipo (${POLICY.depositPct}%): ${formatPrice(deposit)}` : '') +
+    `\n\nHe leído y acepto los términos y condiciones (si cancelo con anticipo pagado, se retiene el ${POLICY.cancelFeePct}% del precio del perfume).` +
+    `\n\n¡Gracias! 🙏`
   )
 }
 
 export default function CartDrawer() {
   const { items, drawerOpen, closeDrawer, removeItem, updateQty, clearCart, totalItems } = useCart()
-  const total        = items.reduce((s, i) => s + i.perfume.price * i.quantity, 0)
-  const needsDeposit = items.some(i => i.perfume.price > 800)
+  const [accepted, setAccepted] = useState(false)
+  const total   = items.reduce((s, i) => s + i.perfume.price * i.quantity, 0)
+  const deposit = depositOf(items)
 
   useEffect(() => {
     if (!drawerOpen) return
@@ -147,18 +160,41 @@ export default function CartDrawer() {
               <span className="display text-4xl">{formatPrice(total)}</span>
             </div>
 
-            {needsDeposit && (
-              <p className="flex items-start gap-2.5 rounded-sm bg-rose-soft px-4 py-3 text-[12px] leading-relaxed text-ink-soft">
+            {deposit > 0 && (
+              <div className="flex items-start gap-2.5 rounded-sm bg-rose-soft px-4 py-3 text-[12px] leading-relaxed text-ink-soft">
                 <Info size={14} className="mt-0.5 shrink-0 text-rose" />
-                <span>Las fragancias de más de {formatPrice(800)} requieren <strong className="font-medium">50% de anticipo</strong>.</span>
-              </p>
+                <span>
+                  Anticipo del <strong className="font-medium">{POLICY.depositPct}%</strong> en fragancias de más de {formatPrice(POLICY.depositFrom)}
+                  {POLICY.depositScope === 'sobre-pedido' ? ' sobre pedido' : ''}:{' '}
+                  <strong className="font-medium">{formatPrice(deposit)}</strong>. El resto, al entregar.
+                </span>
+              </div>
             )}
 
+            {/* The customer must see and accept the cancellation policy before ordering */}
+            <label className="flex cursor-pointer items-start gap-3 text-[12px] leading-relaxed text-muted">
+              <input
+                type="checkbox"
+                checked={accepted}
+                onChange={e => setAccepted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0"
+              />
+              <span>
+                Acepto los{' '}
+                <Link href="/terminos" onClick={closeDrawer} className="text-ink underline underline-offset-2 hover:text-rose">
+                  términos y condiciones
+                </Link>
+                . Si cancelo después de pagar el anticipo, se retiene el {POLICY.cancelFeePct}% del precio del perfume por gastos logísticos y se me reembolsa el resto.
+              </span>
+            </label>
+
             <a
-              href={waLink(buildMsg(items))}
+              href={accepted ? waLink(buildMsg(items)) : undefined}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-ink w-full"
+              aria-disabled={!accepted}
+              onClick={e => { if (!accepted) e.preventDefault() }}
+              className={`btn btn-ink w-full ${accepted ? '' : 'pointer-events-none opacity-40'}`}
             >
               <MessageCircle size={15} /> Enviar pedido por WhatsApp
             </a>
