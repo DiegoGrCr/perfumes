@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { X, Minus, Plus, Pin, ImageIcon, Loader2 } from 'lucide-react'
 import { useAdmin, useLivePerfume } from '@/context/AdminContext'
+import DecantsEditor from './DecantsEditor'
 import type { PerfumePatch } from '@/app/actions/perfume'
 import {
   Perfume, Category, Gender, Concentration,
@@ -283,6 +284,10 @@ function EditorBody({ perfume: base }: { perfume: Perfume }) {
         <Section title="Ideal para">
           <Field label="Temporadas"><div className="mt-3"><Chips options={SEASONS} value={f.seasons} onChange={v => set('seasons', v)} /></div></Field>
           <Field label="Ocasiones"><div className="mt-3"><Chips options={OCCASIONS} value={f.occasions} onChange={v => set('occasions', v)} /></div></Field>
+        </Section>
+
+        <Section title="Decants">
+          <DecantsEditor perfumeId={perfume.id} />
         </Section>
       </div>
 

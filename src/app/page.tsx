@@ -1,4 +1,5 @@
 import Header from '@/components/Header'
+import { PUBLIC_PERFUME_SELECT } from '@/lib/columns'
 import Footer from '@/components/Footer'
 import CatalogClient from '@/components/CatalogClient'
 import Hero from '@/components/home/Hero'
@@ -22,7 +23,7 @@ async function fetchPerfumes(): Promise<Perfume[]> {
   const supabase = createClient(url, key)
   const { data, error } = await supabase
     .from('perfumes')
-    .select('*, images:perfume_images(*)')
+    .select(PUBLIC_PERFUME_SELECT)
     .order('featured', { ascending: false })
     .order('created_at', { ascending: false })
 

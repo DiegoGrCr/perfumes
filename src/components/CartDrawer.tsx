@@ -2,15 +2,18 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { X, Minus, Plus, MessageCircle, Info } from 'lucide-react'
-import { useCart, CartItem } from '@/context/CartContext'
+import { useCart, CartItem, unitPrice } from '@/context/CartContext'
 import { POLICY, formatPrice, needsDeposit, primaryImage, stockLabel, waLink } from '@/lib/brand'
 import BottleSilhouette from '@/components/ui/BottleSilhouette'
 
 function buildMsg(items: CartItem[]): string {
-  const lines = items.map(({ perfume, quantity, volume }) =>
-    `• ${perfume.name} (${perfume.brand}) – ${volume}ml × ${quantity}  ${formatPrice(perfume.price * quantity)}${perfume.in_stock ? '' : ' (sobre pedido)'}`
-  )
-  const total = items.reduce((s, i) => s + i.perfume.price * i.quantity, 0)
+  const lines = items.map(i => {
+    const { perfume, quantity, volume, decant } = i
+    const kind = decant ? `Decant ${volume}ml` : `${volume}ml`
+    const order = !decant && !perfume.in_stock ? ' (sobre pedido)' : ''
+    return `• ${perfume.name} (${perfume.brand}) – ${kind} × ${quantity}  ${formatPrice(unitPrice(i) * quantity)}${order}`
+  })
+  const total = items.reduce((s, i) => s + unitPrice(i) * i.quantity, 0)
   return (
     `¡Hola! Me gustaría realizar el siguiente pedido:\n\n` +
     lines.join('\n') +
@@ -22,8 +25,9 @@ function buildMsg(items: CartItem[]): string {
 export default function CartDrawer() {
   const { items, drawerOpen, closeDrawer, removeItem, updateQty, clearCart, totalItems } = useCart()
   const [accepted, setAccepted] = useState(false)
-  const total   = items.reduce((s, i) => s + i.perfume.price * i.quantity, 0)
-  const hasDeposit = items.some(i => needsDeposit(i.perfume))
+  const total   = items.reduce((s, i) => s + unitPrice(i) * i.quantity, 0)
+  // decants never require the anticipo — only full bottles do
+  const hasDeposit = items.some(i => !i.decant && needsDeposit(i.perfume))
 
   useEffect(() => {
     if (!drawerOpen) return
@@ -79,8 +83,9 @@ export default function CartDrawer() {
             </div>
           ) : (
             <ul className="divide-y divide-line">
-              {items.map(({ perfume, quantity, volume }, i) => {
-                const img = primaryImage(perfume)
+              {items.map((item, i) => {
+                const { perfume, quantity, volume, decant } = item
+                const img = decant?.image ?? primaryImage(perfume)
                 return (
                   <li
                     key={`${perfume.id}-${volume}`}
@@ -105,7 +110,9 @@ export default function CartDrawer() {
                     <div className="flex min-w-0 flex-1 flex-col">
                       <p className="eyebrow text-[8px] text-muted">{perfume.brand}</p>
                       <p className="display mt-1 line-clamp-2 text-xl leading-tight">{perfume.name}</p>
-                      <p className="mt-1 text-[11px] text-faint">{volume} ml · {stockLabel(perfume)}</p>
+                      <p className="mt-1 text-[11px] text-faint">
+                        {decant ? <><span className="text-rose">Decant</span> {volume} ml</> : <>{volume} ml · {stockLabel(perfume)}</>}
+                      </p>
 
                       <div className="mt-auto flex items-center justify-between pt-3">
                         <div className="flex items-center rounded-full border border-line">
@@ -125,7 +132,7 @@ export default function CartDrawer() {
                             <Plus size={12} />
                           </button>
                         </div>
-                        <span className="text-[14px] font-medium">{formatPrice(perfume.price * quantity)}</span>
+                        <span className="text-[14px] font-medium">{formatPrice(unitPrice(item) * quantity)}</span>
                       </div>
                       <button
                         onClick={() => removeItem(perfume.id, volume)}

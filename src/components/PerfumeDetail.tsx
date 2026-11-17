@@ -6,13 +6,14 @@ import {
   Plus, Check, MessageCircle, ShieldCheck, Sparkles, Clock, Wind,
   Leaf, Sun, Snowflake, CloudSun, Moon, Briefcase, Heart, Coffee, Zap, Pencil, Pin, ArrowRight,
 } from 'lucide-react'
-import { Perfume, CATEGORY_LABELS, GENDER_LABELS } from '@/types/perfume'
+import { Perfume, Decant, CATEGORY_LABELS, GENDER_LABELS } from '@/types/perfume'
 import { useCart } from '@/context/CartContext'
 import { discountPct, formatPrice, orderedImages, stockLabel, waLink } from '@/lib/brand'
 import { useAdmin, useLivePerfume } from '@/context/AdminContext'
 import BottleSilhouette from '@/components/ui/BottleSilhouette'
 import Reveal from '@/components/ui/Reveal'
 import PerfumeCard from '@/components/PerfumeCard'
+import DecantPicker from '@/components/DecantPicker'
 
 const SEASON_ICONS: Record<string, React.ReactNode> = {
   Primavera: <Leaf size={16} strokeWidth={1.3} />,
@@ -39,7 +40,7 @@ function SectionHeading({ kicker, children }: { kicker: string; children: React.
   )
 }
 
-export function PerfumeDetail({ perfume: base, related = [] }: { perfume: Perfume; related?: Perfume[] }) {
+export function PerfumeDetail({ perfume: base, related = [], decants = [] }: { perfume: Perfume; related?: Perfume[]; decants?: Decant[] }) {
   const { addItem, flyToCart, openDrawer } = useCart()
   const { isAdmin, openEditor, save } = useAdmin()
   const perfume = useLivePerfume(base)
@@ -263,6 +264,17 @@ export function PerfumeDetail({ perfume: base, related = [] }: { perfume: Perfum
               <MessageCircle size={15} /> Preguntar por WhatsApp
             </a>
           </div>
+
+          {decants.length > 0 && (
+            <div id="decants" className="mt-10 border-t border-line pt-8 anim-fade-up" style={{ animationDelay: '680ms' }}>
+              <div className="mb-4 flex items-baseline justify-between gap-4">
+                <h2 className="display text-3xl">También en <em className="text-rose">decant</em></h2>
+                <Link href="/decants" className="link-underline text-[11px] uppercase tracking-[0.2em] text-muted hover:text-ink">Ver todos</Link>
+              </div>
+              <p className="mb-5 text-[13px] leading-relaxed text-muted">Pruébalo antes del frasco completo: envasado de la botella original, con atomizador.</p>
+              <DecantPicker perfume={perfume} decants={decants} />
+            </div>
+          )}
 
           <ul className="mt-10 grid grid-cols-2 gap-4 border-t border-line pt-8 text-[12px] text-muted anim-fade-up" style={{ animationDelay: '720ms' }}>
             <li className="flex items-start gap-3"><ShieldCheck size={16} strokeWidth={1.3} className="mt-0.5 shrink-0 text-rose" /> 100% original y sellado</li>

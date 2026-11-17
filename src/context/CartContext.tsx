@@ -6,12 +6,17 @@ export interface CartItem {
   perfume: Perfume
   quantity: number
   volume: number
+  /** present when the item is a 5/10 ml decant instead of the full bottle */
+  decant?: { id: string; price: number; image: string }
 }
+
+/** Unit price of a cart line (decants carry their own price). */
+export const unitPrice = (i: CartItem) => i.decant?.price ?? i.perfume.price
 
 interface CartContextType {
   items: CartItem[]
   drawerOpen: boolean
-  addItem: (perfume: Perfume, volume: number) => void
+  addItem: (perfume: Perfume, volume: number, decant?: CartItem['decant']) => void
   removeItem: (id: string, volume: number) => void
   updateQty: (id: string, volume: number, qty: number) => void
   clearCart: () => void
@@ -43,12 +48,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('ep_cart', JSON.stringify(items))
   }, [items])
 
-  function addItem(perfume: Perfume, volume: number) {
+  function addItem(perfume: Perfume, volume: number, decant?: CartItem['decant']) {
     setItems(prev => {
       const hit = prev.find(i => i.perfume.id === perfume.id && i.volume === volume)
       if (hit) return prev.map(i => i.perfume.id === perfume.id && i.volume === volume
         ? { ...i, quantity: i.quantity + 1 } : i)
-      return [...prev, { perfume, quantity: 1, volume }]
+      return [...prev, { perfume, quantity: 1, volume, ...(decant ? { decant } : {}) }]
     })
   }
 

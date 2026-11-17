@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { PUBLIC_PERFUME_SELECT } from '@/lib/columns'
 import { createClient } from '@supabase/supabase-js'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -19,7 +20,7 @@ async function fetchOffers(): Promise<Perfume[]> {
   const supabase = createClient(url, key)
   const { data } = await supabase
     .from('perfumes')
-    .select('*, images:perfume_images(*)')
+    .select(PUBLIC_PERFUME_SELECT)
     .not('original_price', 'is', null)
   return data ?? []
 }

@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
+import { PUBLIC_PERFUME_SELECT } from '@/lib/columns'
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { PerfumeDetail } from '@/components/PerfumeDetail'
 import { Perfume } from '@/types/perfume'
+import { fetchDecants } from '@/lib/decants'
 
 export const revalidate = 300  // 5 min en servidor
 
@@ -19,7 +21,7 @@ async function fetchPerfume(id: string): Promise<Perfume | null> {
   if (!supabase) return null
   const { data, error } = await supabase
     .from('perfumes')
-    .select('*, images:perfume_images(*)')
+    .select(PUBLIC_PERFUME_SELECT)
     .eq('id', id)
     .single()
   if (error || !data) return null
@@ -31,7 +33,7 @@ async function fetchRelated(p: Perfume): Promise<Perfume[]> {
   if (!supabase) return []
   const { data } = await supabase
     .from('perfumes')
-    .select('*, images:perfume_images(*)')
+    .select(PUBLIC_PERFUME_SELECT)
     .eq('category', p.category)
     .neq('id', p.id)
     .order('featured', { ascending: false })
@@ -59,12 +61,13 @@ export default async function PerfumePage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const perfume = await fetchPerfume(id)
   if (!perfume) notFound()
-  const related = await fetchRelated(perfume)
+  const supabase = client()
+  const [related, decants] = await Promise.all([fetchRelated(perfume), supabase ? fetchDecants(supabase, perfume.id) : []])
 
   return (
     <>
       <Header />
-      <PerfumeDetail perfume={perfume} related={related} />
+      <PerfumeDetail perfume={perfume} related={related} decants={decants} />
       <Footer />
     </>
   )

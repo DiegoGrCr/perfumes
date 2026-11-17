@@ -1,4 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr'
+import { PUBLIC_PERFUME_SELECT } from '@/lib/columns'
 import { Perfume } from '@/types/perfume'
 
 const url  = process.env.NEXT_PUBLIC_SUPABASE_URL  ?? ''
@@ -13,7 +14,7 @@ export async function getPerfumes(): Promise<Perfume[]> {
 
   const { data, error } = await supabase
     .from('perfumes')
-    .select('*, images:perfume_images(*)')
+    .select(PUBLIC_PERFUME_SELECT)
     .order('featured', { ascending: false })
     .order('created_at', { ascending: false })
 

@@ -45,6 +45,7 @@ export default function Footer() {
             <ul className="space-y-3 text-sm text-ivory/75">
               <li><Link href="/#coleccion" className="link-underline">Toda la colección</Link></li>
               <li><Link href="/ofertas" className="link-underline">Ofertas activas</Link></li>
+              <li><Link href="/decants" className="link-underline">Decants 5 y 10 ml</Link></li>
               <li><Link href="/terminos" className="link-underline">Términos y condiciones</Link></li>
               <li><Link href="/#familias" className="link-underline">Familias olfativas</Link></li>
               <li><Link href="/#promesa" className="link-underline">Nuestra promesa</Link></li>

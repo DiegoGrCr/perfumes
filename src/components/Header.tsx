@@ -11,6 +11,7 @@ import { waLink } from '@/lib/brand'
 const NAV = [
   { href: '/#coleccion', label: 'Colección', dot: false },
   { href: '/ofertas',    label: 'Ofertas',   dot: true },
+  { href: '/decants',    label: 'Decants',   dot: false },
   { href: '/#familias',  label: 'Familias',  dot: false },
 ]
 

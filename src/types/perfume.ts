@@ -42,6 +42,20 @@ export interface Perfume {
   stock_quantity?: number
 }
 
+export type DecantSize = 5 | 10
+
+/** A 5 or 10 ml decant of a full-size perfume (table `decants`). */
+export interface Decant {
+  id: string
+  perfume_id: string
+  volume_ml: DecantSize
+  price: number
+  in_stock: boolean
+  active: boolean
+  /** joined minimal perfume data (storefront queries) */
+  perfume?: Pick<Perfume, 'id' | 'name' | 'brand' | 'concentration' | 'volume_ml' | 'gender' | 'category' | 'scent_type' | 'in_stock' | 'images'>
+}
+
 export interface Sale {
   id: string
   perfume_id: string | null
