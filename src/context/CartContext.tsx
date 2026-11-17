@@ -7,7 +7,15 @@ export interface CartItem {
   quantity: number
   volume: number
   /** present when the item is a 5/10 ml decant instead of the full bottle */
-  decant?: { id: string; price: number; image: string }
+  decant?: {
+    id: string
+    price: number
+    /** label name + liquid colour, to draw the vial in the cart */
+    label?: string
+    color?: string | null
+    /** legacy carts stored a PNG */
+    image?: string
+  }
 }
 
 /** Unit price of a cart line (decants carry their own price). */

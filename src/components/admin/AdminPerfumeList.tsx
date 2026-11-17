@@ -1,11 +1,14 @@
 'use client'
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Pencil, Trash2, Plus, Package, Star, Download, Search, X, Check, Loader2 } from 'lucide-react'
+import { Pencil, Trash2, Plus, Package, Star, Download, Search, X, Check, Loader2, Droplet } from 'lucide-react'
 import { Perfume, Category } from '@/types/perfume'
 import { CATEGORY_LABELS, GENDER_LABELS } from '@/types/perfume'
 import { deletePerfume } from '@/lib/admin-api'
 import { savePerfume, PerfumePatch } from '@/app/actions/perfume'
+import { createClient } from '@/utils/supabase/client'
+import DecantsEditor from './DecantsEditor'
+import { cleanNameOf } from '@/lib/names'
 
 const PAGE_SIZE = 20
 
@@ -111,6 +114,32 @@ function InlineNumber({
 }
 
 /* ── Sí / No switch ───────────────────────────────────────────── */
+/** Light side panel with the decant editor (prices, label name, liquid colour). */
+function DecantsDrawer({ perfume, onClose }: { perfume: Perfume; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label={`Decants de ${perfume.name}`}>
+      <button className="absolute inset-0 bg-black/60" onClick={onClose} aria-label="Cerrar" />
+      <aside className="relative flex h-full w-full max-w-md flex-col bg-ivory text-ink shadow-2xl">
+        <header className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
+          <div className="min-w-0">
+            <p className="eyebrow text-[9px] text-muted">Decants · {perfume.brand}</p>
+            <h2 className="display mt-1 truncate text-2xl">{cleanNameOf(perfume)}</h2>
+          </div>
+          <button onClick={onClose} className="p-1 text-muted hover:text-ink" aria-label="Cerrar"><X size={18} /></button>
+        </header>
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          <DecantsEditor perfumeId={perfume.id} />
+        </div>
+      </aside>
+    </div>
+  )
+}
+
 function StockSwitch({ on, onToggle, busy }: { on: boolean; onToggle: () => void; busy: boolean }) {
   return (
     <button
@@ -150,6 +179,18 @@ export function AdminPerfumeList({ initialPerfumes, onPerfumeUpdated, onPerfumeD
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [busy, setBusy]           = useState<Record<string, boolean>>({})
   const [error, setError]         = useState<string | null>(null)
+  const [decantsOf, setDecantsOf] = useState<Perfume | null>(null)
+  const [decantSizes, setDecantSizes] = useState<Record<string, number[]>>({})
+
+  // which perfumes already sell decants (badge on the row)
+  const loadDecantSizes = useCallback(() =>
+    createClient().from('decants').select('perfume_id, volume_ml').eq('active', true).then(({ data }) => {
+      const m: Record<string, number[]> = {}
+      for (const d of data ?? []) (m[d.perfume_id] ??= []).push(d.volume_ml)
+      setDecantSizes(m)
+    }), [])
+  useEffect(() => { void loadDecantSizes() }, [loadDecantSizes])
+  const closeDecants = useCallback(() => { setDecantsOf(null); loadDecantSizes() }, [loadDecantSizes])
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   // Search across everything, so each tab can show how many matches it holds
@@ -436,6 +477,15 @@ export function AdminPerfumeList({ initialPerfumes, onPerfumeUpdated, onPerfumeD
                           </div>
                         ) : (
                           <div className="flex items-center gap-1">
+                            <button onClick={() => setDecantsOf(p)}
+                              className="flex items-center gap-1 rounded p-2 hover:opacity-80"
+                              style={{ color: decantSizes[p.id]?.length ? '#e4b8ac' : '#666' }}
+                              title="Decants: precios y etiqueta">
+                              <Droplet size={14} />
+                              {decantSizes[p.id]?.length ? (
+                                <span className="text-[10px] whitespace-nowrap">{[...decantSizes[p.id]].sort((a, b) => a - b).join('·')} ml</span>
+                              ) : null}
+                            </button>
                             <button onClick={() => router.push(`/admin/perfumes/${p.id}/edit`)}
                               className="p-2 rounded hover:opacity-80" style={{ color: '#C9A84C' }} title="Edición completa">
                               <Pencil size={14} />
@@ -469,6 +519,7 @@ export function AdminPerfumeList({ initialPerfumes, onPerfumeUpdated, onPerfumeD
           )}
         </>
       )}
+      {decantsOf && <DecantsDrawer perfume={decantsOf} onClose={closeDecants} />}
     </div>
   )
 }

@@ -52,6 +52,10 @@ export interface Decant {
   price: number
   in_stock: boolean
   active: boolean
+  /** short name printed on the label (null → perfume's cleaned name) */
+  label?: string | null
+  /** liquid colour #rrggbb (null → detected from the photo) */
+  liquid_color?: string | null
   /** joined minimal perfume data (storefront queries) */
   perfume?: Pick<Perfume, 'id' | 'name' | 'brand' | 'concentration' | 'volume_ml' | 'gender' | 'category' | 'scent_type' | 'in_stock' | 'images'>
 }

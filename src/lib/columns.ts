@@ -12,4 +12,8 @@ export const PUBLIC_PERFUME_SELECT =
 
 /** Decant row joined with the minimum perfume data the storefront needs. */
 export const PUBLIC_DECANT_SELECT =
+  'id, perfume_id, volume_ml, price, in_stock, active, label, liquid_color, perfume:perfumes(id, name, brand, concentration, volume_ml, gender, category, scent_type, in_stock, images:perfume_images(url, is_primary, sort_order))'
+
+/** Same without label/liquid_color — fallback while migration 005 isn't applied. */
+export const PUBLIC_DECANT_SELECT_LEGACY =
   'id, perfume_id, volume_ml, price, in_stock, active, perfume:perfumes(id, name, brand, concentration, volume_ml, gender, category, scent_type, in_stock, images:perfume_images(url, is_primary, sort_order))'

@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Decant, DecantSize } from '@/types/perfume'
-import { PUBLIC_DECANT_SELECT } from '@/lib/columns'
-import decantImages from '@/data/decant-images.json'
+import { PUBLIC_DECANT_SELECT, PUBLIC_DECANT_SELECT_LEGACY } from '@/lib/columns'
+import { cleanName } from '@/lib/names'
+import { DEFAULT_JUICE, decantSvg, hexToJuice, type DecantArt } from '@/lib/decant-svg'
 
 export const DECANT_SIZES: DecantSize[] = [5, 10]
 
@@ -28,20 +29,44 @@ export function suggestedDecantPrice(costPrice: number | null | undefined, bottl
   return Math.ceil(raw / DECANT_PRICING.roundTo) * DECANT_PRICING.roundTo
 }
 
-type ImageEntry = { [k: string]: string }
-const IMAGES = decantImages as Record<string, ImageEntry>
+/** Longest label name the admin may type. */
+export const LABEL_MAX = 40
 
-/** Generated decant image for a perfume (falls back to the generic Velvet vial). */
-export function decantImage(perfumeId: string, size: DecantSize | 'par') {
-  return IMAGES[perfumeId]?.[String(size)] ?? `/decants/generico-${size}.png`
+/** Text printed on the label: the admin's short name, or the perfume's cleaned name. */
+export const decantLabel = (perfume: { name: string; brand: string }, label?: string | null) =>
+  label?.trim() || cleanName(perfume.name, perfume.brand)
+
+type ArtSource = {
+  perfume: { name: string; brand: string; concentration?: string }
+  label?: string | null
+  liquid_color?: string | null
 }
-export const hasCustomDecantImage = (perfumeId: string) => Boolean(IMAGES[perfumeId])
+
+/** Everything needed to draw a perfume's decant vial(s). */
+export function decantArt({ perfume, label, liquid_color }: ArtSource, size: DecantSize | 'par'): DecantArt {
+  return {
+    label: decantLabel(perfume, label),
+    brand: perfume.brand,
+    concentration: perfume.concentration,
+    juice: hexToJuice(liquid_color) ?? DEFAULT_JUICE,
+    size,
+  }
+}
+
+/** Vial as an image URL (for the fly-to-cart animation). */
+export const decantDataUrl = (art: DecantArt) =>
+  'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(decantSvg(art))
 
 /** Active decants (optionally of one perfume). Returns [] if the table doesn't exist yet. */
 export async function fetchDecants(supabase: SupabaseClient, perfumeId?: string): Promise<Decant[]> {
-  let q = supabase.from('decants').select(PUBLIC_DECANT_SELECT).eq('active', true).order('volume_ml')
-  if (perfumeId) q = q.eq('perfume_id', perfumeId)
-  const { data, error } = await q
+  const run = (cols: string) => {
+    let q = supabase.from('decants').select(cols).eq('active', true).order('volume_ml')
+    if (perfumeId) q = q.eq('perfume_id', perfumeId)
+    return q
+  }
+  let { data, error } = await run(PUBLIC_DECANT_SELECT)
+  // label/liquid_color columns missing (migration 005 not applied yet) → keep selling with defaults
+  if (error) ({ data, error } = await run(PUBLIC_DECANT_SELECT_LEGACY))
   if (error || !data) return []
   return data as unknown as Decant[]
 }

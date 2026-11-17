@@ -26,7 +26,7 @@ export function cleanName(name = '', brand = '') {
     .trim()
   if (s.length < 2) s = name.trim()
   return s.toLowerCase().split(' ').map((w, i) =>
-    i > 0 && ['de', 'di', 'du', 'del', 'y', 'of'].includes(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    /\d/.test(w) ? w.toUpperCase() : i > 0 && ['de', 'di', 'du', 'del', 'y', 'of'].includes(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
 export const cleanNameOf = (p: { name: string; brand: string }) => cleanName(p.name, p.brand)

@@ -5,6 +5,9 @@ import { X, Minus, Plus, MessageCircle, Info } from 'lucide-react'
 import { useCart, CartItem, unitPrice } from '@/context/CartContext'
 import { POLICY, formatPrice, needsDeposit, primaryImage, stockLabel, waLink } from '@/lib/brand'
 import BottleSilhouette from '@/components/ui/BottleSilhouette'
+import DecantVial from '@/components/DecantVial'
+import { DEFAULT_JUICE, hexToJuice } from '@/lib/decant-svg'
+import { cleanNameOf } from '@/lib/names'
 
 function buildMsg(items: CartItem[]): string {
   const lines = items.map(i => {
@@ -86,6 +89,9 @@ export default function CartDrawer() {
               {items.map((item, i) => {
                 const { perfume, quantity, volume, decant } = item
                 const img = decant?.image ?? primaryImage(perfume)
+                const vial = decant && !decant.image
+                  ? { label: decant.label || cleanNameOf(perfume), brand: perfume.brand, concentration: perfume.concentration, juice: hexToJuice(decant.color) ?? DEFAULT_JUICE, size: volume === 5 ? 5 as const : 10 as const }
+                  : null
                 return (
                   <li
                     key={`${perfume.id}-${volume}`}
@@ -101,7 +107,9 @@ export default function CartDrawer() {
                       onClick={closeDrawer}
                       className="flex h-28 w-24 shrink-0 items-center justify-center bg-sand"
                     >
-                      {img
+                      {vial
+                        ? <DecantVial art={vial} className="h-full w-full p-1.5" />
+                        : img
                         // eslint-disable-next-line @next/next/no-img-element
                         ? <img src={img} alt={perfume.name} className="h-full w-full object-contain p-2.5" />
                         : <BottleSilhouette className="h-16 w-auto" />}

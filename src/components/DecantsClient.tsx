@@ -6,7 +6,9 @@ import { Plus, Check, Droplet, ShieldCheck, Gift, ArrowRight, MessageCircle } fr
 import type { Decant, Perfume } from '@/types/perfume'
 import { GENDER_LABELS } from '@/types/perfume'
 import { useCart } from '@/context/CartContext'
-import { decantImage } from '@/lib/decants'
+import { decantArt, decantDataUrl, decantLabel } from '@/lib/decants'
+import { DEFAULT_JUICE } from '@/lib/decant-svg'
+import DecantVial from './DecantVial'
 import { cleanNameOf } from '@/lib/names'
 import { formatPrice, waLink } from '@/lib/brand'
 import Reveal from './ui/Reveal'
@@ -20,14 +22,16 @@ function asPerfume(d: Decant): Perfume {
 
 function Card({ perfume, decants }: Group) {
   const { addItem, flyToCart } = useCart()
-  const img = useRef<HTMLImageElement>(null)
+  const img = useRef<HTMLDivElement>(null)
   const [added, setAdded] = useState<number | null>(null)
   const sorted = [...decants].sort((a, b) => a.volume_ml - b.volume_ml)
+  // label + colour are per perfume (saved on both sizes): take them from the first row
+  const look = { perfume, label: sorted[0]?.label, liquid_color: sorted[0]?.liquid_color }
+  const pair = sorted.length > 1 ? 'par' : sorted[0]?.volume_ml ?? 'par'
 
   function add(d: Decant) {
-    const image = decantImage(perfume.id, d.volume_ml)
-    addItem(perfume, d.volume_ml, { id: d.id, price: d.price, image })
-    if (img.current) flyToCart(img.current, image)
+    addItem(perfume, d.volume_ml, { id: d.id, price: d.price, label: decantLabel(perfume, d.label), color: d.liquid_color })
+    if (img.current) flyToCart(img.current, decantDataUrl(decantArt({ perfume, ...d }, d.volume_ml)))
     setAdded(d.volume_ml)
     setTimeout(() => setAdded(a => (a === d.volume_ml ? null : a)), 1600)
   }
@@ -36,9 +40,8 @@ function Card({ perfume, decants }: Group) {
     <article className="group flex flex-col">
       <Link href={`/perfume/${perfume.id}#decants`} className="relative block aspect-[4/5] overflow-hidden bg-sand">
         <div className="absolute inset-0" style={{ background: 'radial-gradient(60% 50% at 50% 45%, rgba(255,255,255,0.9), transparent 70%)' }} />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img ref={img} src={decantImage(perfume.id, 'par')} alt={`Decants de ${perfume.name}`} loading="lazy"
-          className="absolute inset-0 h-full w-full object-contain p-[8%] drop-shadow-[0_18px_18px_rgba(23,18,15,0.18)] transition-transform duration-[900ms] ease-lux group-hover:scale-[1.05]" />
+        <DecantVial ref={img} art={decantArt(look, pair)} title={`Decants de ${perfume.name}`}
+          className="absolute inset-0 h-full w-full p-[8%] drop-shadow-[0_18px_18px_rgba(23,18,15,0.18)] transition-transform duration-[900ms] ease-lux group-hover:scale-[1.05]" />
       </Link>
       <div className="pt-4">
         <p className="eyebrow text-[9px] text-muted">{perfume.brand}</p>
@@ -105,8 +108,11 @@ export default function DecantsClient({ decants }: { decants: Decant[] }) {
           </div>
           <div className="relative hidden aspect-[7/6] lg:col-span-5 lg:block anim-fade-in">
             <div className="absolute inset-[8%] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(228,184,172,.45), transparent)' }} />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={groups[0] ? decantImage(groups[0].perfume.id, 'par') : '/decants/generico-par.png'} alt="" className="relative h-full w-full object-contain anim-float drop-shadow-[0_30px_30px_rgba(23,18,15,0.22)]" />
+            <DecantVial
+              art={groups[0]
+                ? decantArt({ perfume: groups[0].perfume, label: groups[0].decants[0]?.label, liquid_color: groups[0].decants[0]?.liquid_color }, 'par')
+                : { label: 'Tu próxima favorita', brand: 'Velvet', juice: DEFAULT_JUICE, size: 'par' }}
+              className="relative h-full w-full anim-float drop-shadow-[0_30px_30px_rgba(23,18,15,0.22)]" />
           </div>
         </div>
       </section>
