@@ -307,8 +307,8 @@ export default function SearchOverlay() {
                             <span className="eyebrow block text-[8px] text-muted"><Hl text={p.brand} query={q} /></span>
                             <span className="display mt-0.5 block truncate text-xl leading-tight"><Hl text={p.name} query={q} /></span>
                             <span className="mt-0.5 block text-[11px] text-faint">
-                              {p.concentration} · {p.volume_ml} ml · {GENDER_LABELS[p.gender]} ·{' '}
-                              <span className={p.in_stock ? 'text-emerald-700' : ''}>{p.in_stock ? 'En existencia' : 'Sobre pedido'}</span>
+                              {p.concentration} · {p.volume_ml} ml · {GENDER_LABELS[p.gender]}
+                              {p.in_stock && <> · <span className="text-emerald-700">En existencia</span></>}
                             </span>
                           </span>
                           <span className="shrink-0 text-right">

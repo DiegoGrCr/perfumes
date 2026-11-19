@@ -119,7 +119,7 @@ export default function CartDrawer() {
                       <p className="eyebrow text-[8px] text-muted">{perfume.brand}</p>
                       <p className="display mt-1 line-clamp-2 text-xl leading-tight">{perfume.name}</p>
                       <p className="mt-1 text-[11px] text-faint">
-                        {decant ? <><span className="text-rose">Decant</span> {volume} ml</> : <>{volume} ml · {stockLabel(perfume)}</>}
+                        {decant ? <><span className="text-rose">Decant</span> {volume} ml</> : <>{volume} ml{perfume.in_stock && ` · ${stockLabel(perfume)}`}</>}
                       </p>
 
                       <div className="mt-auto flex items-center justify-between pt-3">

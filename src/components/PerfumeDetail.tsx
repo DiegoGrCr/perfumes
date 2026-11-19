@@ -215,10 +215,12 @@ export function PerfumeDetail({ perfume: base, related = [], decants = [] }: { p
             {discount && perfume.original_price && (
               <span className="text-lg text-faint line-through">{formatPrice(perfume.original_price)}</span>
             )}
-            <span className={`ml-auto flex items-center gap-2 text-[11px] ${perfume.in_stock ? 'text-ink-soft' : 'text-muted'}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${perfume.in_stock ? 'bg-emerald-600' : 'border border-faint'}`} />
-              {stockLabel(perfume)}
-            </span>
+            {perfume.in_stock && (
+              <span className="ml-auto flex items-center gap-2 text-[11px] text-ink-soft">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                {stockLabel(perfume)}
+              </span>
+            )}
           </div>
 
           {!perfume.in_stock && (

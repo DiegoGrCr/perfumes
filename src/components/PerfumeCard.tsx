@@ -156,10 +156,12 @@ export default function PerfumeCard({ perfume: base, priority = false, showSavin
         {showSavings && discount && perfume.original_price && (
           <p className="mt-1 text-[11px] font-medium text-rose">Ahorras {formatPrice(perfume.original_price - perfume.price)}</p>
         )}
-        <p className={`mt-1.5 flex items-center gap-1.5 text-[11px] ${perfume.in_stock ? 'text-ink-soft' : 'text-muted'}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${perfume.in_stock ? 'bg-emerald-600' : 'border border-faint'}`} />
-          {stockLabel(perfume)}
-        </p>
+        {perfume.in_stock && (
+          <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-ink-soft">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+            {stockLabel(perfume)}
+          </p>
+        )}
       </div>
     </article>
   )
